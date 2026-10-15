@@ -1,0 +1,13 @@
+package sv.puntostock.entity;
+import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.*;
+@Entity @Table(name="usuarios")
+public class Usuario {
+ @Id @GeneratedValue(strategy=GenerationType.IDENTITY) public Long id;
+ @org.hibernate.annotations.Nationalized @Column(nullable=false,unique=true,length=80) public String username;
+ @Column(name="password_hash",nullable=false,length=100) public String passwordHash;
+ public boolean activo=true;
+ @ManyToMany(fetch=FetchType.EAGER) @JoinTable(name="usuario_roles",joinColumns=@JoinColumn(name="usuario_id"),inverseJoinColumns=@JoinColumn(name="rol_id")) public Set<Rol> roles=new HashSet<>();
+}
