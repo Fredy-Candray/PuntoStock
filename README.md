@@ -12,6 +12,8 @@ Base funcional de un sistema de ventas e inventario en monorepo. Backend Spring 
 
 ## Configuración local (PowerShell)
 
+**Prueba local realizada:** SQL Server `localhost\SQLEXPRESS`, base separada `PuntoStock`, interfaz `http://127.0.0.1:14200` y API en el puerto 18080. Consulte `docs/prueba-local.md` para reproducir el arranque, consultar los usuarios de prueba y revisar las 41 comprobaciones de integración. Las claves están protegidas localmente y excluidas de Git.
+
 Requisitos: JDK 21, Maven >=3.6.3, Node 22.22.3+ o 24.15+ compatible con Angular 22, npm y SQL Server accesible. No se incluyen credenciales ni contraseñas predeterminadas.
 
 1. Crear una base vacía `PuntoStock` en SQL Server usando SSMS o `sqlcmd` y ejecutar `database/001_schema.sql` sobre ella. La cuenta de la aplicación debe tener acceso DML, sin permisos DDL en producción. El script se ejecuta una sola vez y dentro de una transacción.
@@ -54,9 +56,9 @@ La ganancia es **bruta de ventas**, no utilidad contable neta: suma `(precio ven
 
 ## Validación
 
-Pruebas unitarias incluidas para cálculo histórico, stock insuficiente, líneas duplicadas, devoluciones y límites UTC del día en El Salvador. Debe ejecutarse además una prueba de integración contra SQL Server antes de desplegar: ventas concurrentes sobre el mismo producto, rollback completo ante fallos y comprobación de respuestas 401/403 por rol. Las pruebas unitarias no demuestran bloqueos ni compatibilidad del esquema con Hibernate.
+Pruebas unitarias incluidas para cálculo histórico, stock insuficiente, líneas duplicadas, devoluciones y límites UTC del día en El Salvador. También se ejecutaron 41 comprobaciones de integración contra SQL Server: ventas concurrentes sobre la última unidad, rollback completo ante fallos y respuestas 401/403 por rol, entre otras. Hibernate validó el esquema real. El alcance y las condiciones de reproducción están en `docs/validacion.md`.
 
-Resultado de esta entrega: seis pruebas backend aprobadas y build Angular completado. Consulte `docs/validacion.md` para comandos, versiones y alcance exacto.
+Resultado de esta entrega: seis pruebas backend aprobadas con Java 21, 41 comprobaciones HTTP/SQL aprobadas y build Angular completado. Login y catálogo también se comprobaron a través del proxy Angular.
 
 No se implementan aún recuperación de contraseña, refresh tokens, paginación de catálogo, consulta de recibos, idempotencia de ventas, devoluciones financieras, cargas de archivos, protección de login por tasa ni observabilidad operativa. Antes de habilitar reintentos automáticos del cobro, implementar una clave de idempotencia única por venta. Sin ella, ante una respuesta perdida verificar el registro con un administrador antes de repetir la operación.
 
