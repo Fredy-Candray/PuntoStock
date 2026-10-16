@@ -24,3 +24,5 @@ El build y las pruebas unitarias no constituyen una certificación de despliegue
 ## Rediseño de interfaz · 16 de octubre de 2026
 
 Se compiló en producción el nuevo login, navegación, resumen, POS, productos e inventario. Doce comprobaciones de Chrome verificaron ingreso real, errores de credenciales, estados de formularios, carrito, datos del resumen, signo de una merma con petición interceptada y adaptación a móvil sin errores JavaScript. Las capturas de escritorio y móvil se revisaron localmente. La prueba no registró ventas ni modificó inventario. Consulte `interfaz.md`.
+
+Se agregó un cambio interactivo de contraseña para el administrador local, con entrada oculta, BCrypt y sincronización de la copia DPAPI. La migración `002_password_hash_constraint.sql` se aplicó a PuntoStock y se comprobó que rechaza con error SQL 547 una actualización de texto inválido; la prueba se ejecutó dentro de una transacción revertida. La contraseña elegida para la prueba local se verificó mediante login HTTP y navegador, sin registrar su valor en el repositorio.

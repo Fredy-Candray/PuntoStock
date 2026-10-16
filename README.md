@@ -4,7 +4,7 @@ Base funcional de un sistema de ventas e inventario en monorepo. Backend Spring 
 
 ## Contenido
 
-- `database/001_schema.sql`: DDL con seis entidades de negocio, roles y tabla intermedia, claves foráneas, índices y restricciones.
+- `database/001_schema.sql`: DDL con seis entidades de negocio, roles y tabla intermedia, claves foráneas, índices y restricciones. `002_password_hash_constraint.sql` valida el formato BCrypt de las contraseñas.
 - `backend/src/main/java/sv/puntostock`: capas `api`, `service`, `repository`, `entity` y `security`.
 - `frontend/src/app`: componentes Login, Dashboard, POS, Productos e Inventario; servicios HTTP, interceptor y guards.
 - `docs/arquitectura.md`: reglas, contratos de API, decisiones y plan de validación.
@@ -17,7 +17,7 @@ Base funcional de un sistema de ventas e inventario en monorepo. Backend Spring 
 
 Requisitos: JDK 21, Maven >=3.6.3, Node 22.22.3+ o 24.15+ compatible con Angular 22, npm y SQL Server accesible. No se incluyen credenciales ni contraseñas predeterminadas.
 
-1. Crear una base vacía `PuntoStock` en SQL Server usando SSMS o `sqlcmd` y ejecutar `database/001_schema.sql` sobre ella. La cuenta de la aplicación debe tener acceso DML, sin permisos DDL en producción. El script se ejecuta una sola vez y dentro de una transacción.
+1. Crear una base vacía `PuntoStock` en SQL Server usando SSMS o `sqlcmd` y ejecutar `database/001_schema.sql` y luego `database/002_password_hash_constraint.sql`. La cuenta de la aplicación debe tener acceso DML, sin permisos DDL en producción. El DDL inicial se ejecuta una sola vez y dentro de una transacción.
 2. Configurar las variables en la terminal del backend (sustituir los valores):
 
 ```powershell

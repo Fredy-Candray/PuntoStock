@@ -37,7 +37,15 @@ Las contraseñas aleatorias, la cuenta SQL y el secreto JWT se guardan cifrados 
 ./scripts/Show-LocalCredentials.ps1
 ```
 
-El campo SQL `usuarios.password_hash` contiene un hash BCrypt, no la contraseña para escribir en el login. Si ese campo se reemplaza manualmente por texto y el administrador deja de ingresar, `./scripts/Repair-LocalAdmin.ps1` repara únicamente un hash inválido usando la clave cifrada ya guardada. No sobrescribe contraseñas BCrypt válidas. Consultar después la clave con `Show-LocalCredentials.ps1`.
+El campo SQL `usuarios.password_hash` contiene un hash BCrypt, no la contraseña para escribir en el login. La migración `database/002_password_hash_constraint.sql` impide guardar texto o hashes con formato inválido. Para cambiar la clave de la cuenta local sin mostrarla ni escribirla en SQL:
+
+```powershell
+./scripts/Set-LocalAdminPassword.ps1
+```
+
+Solicita la nueva contraseña y su confirmación de forma oculta, genera BCrypt, actualiza únicamente el administrador configurado y sincroniza la copia DPAPI. Requiere 12 caracteres por defecto; para una prueba local con al menos ocho puede indicarse `-AllowShortLocalPassword`. La API normal de creación de usuarios conserva su mínimo de 12 caracteres.
+
+Si una base antigua contiene un hash inválido, `./scripts/Repair-LocalAdmin.ps1` lo repara usando la clave cifrada ya guardada, antes de aplicar la migración. No sobrescribe contraseñas BCrypt válidas. Consultar o copiar la clave después con los scripts locales de credenciales.
 
 La cuenta SQL `puntostock_local_app` recibe únicamente SELECT, INSERT, UPDATE y DELETE en el esquema dbo de PuntoStock. La conexión usa TLS con certificado confiado explícitamente para esta prueba local. No se crean permisos de administrador SQL para la aplicación. El bootstrap de Spring crea el administrador solo si no hay usuarios.
 

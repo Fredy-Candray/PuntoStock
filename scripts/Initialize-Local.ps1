@@ -25,6 +25,7 @@ try {
  if([int]$cmd.ExecuteScalar() -ne 1){throw 'La base existente no está identificada como entorno local de PuntoStock. No se modificó su contenido.'}
  $cmd=$connection.CreateCommand();$cmd.CommandText="SELECT COUNT(*) FROM sys.tables WHERE name='productos'"
  if([int]$cmd.ExecuteScalar() -eq 0){Sql (Get-Content (Join-Path $root 'database/001_schema.sql') -Raw)}
+ Sql (Get-Content (Join-Path $root 'database/002_password_hash_constraint.sql') -Raw)
  $connection.ChangeDatabase('master')
  $password=(Plain $settings.DbPassword).Replace("'","''")
  Sql "IF SUSER_ID(N'puntostock_local_app') IS NULL CREATE LOGIN [puntostock_local_app] WITH PASSWORD=N'$password', CHECK_POLICY=ON, DEFAULT_DATABASE=[PuntoStock];"

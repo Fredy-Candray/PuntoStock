@@ -11,6 +11,7 @@ $start.FileName=Join-Path $jdk.FullName 'bin/java.exe'
 $start.UseShellExecute=$false;$start.CreateNoWindow=$true
 $start.RedirectStandardInput=$true;$start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
 foreach($argument in @('--class-path',$crypto.FullName,(Join-Path $PSScriptRoot 'HashLocalPassword.java'))){[void]$start.ArgumentList.Add($argument)}
+if($settings.PSObject.Properties['LocalShortPasswordAllowed'] -and $settings.LocalShortPasswordAllowed){[void]$start.ArgumentList.Add('--local-min8')}
 $process=[Diagnostics.Process]::Start($start)
 $process.StandardInput.WriteLine([Net.NetworkCredential]::new('', $settings.AdminPassword).Password)
 $process.StandardInput.Close()
