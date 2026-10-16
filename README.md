@@ -17,6 +17,9 @@ Base funcional de un sistema de ventas e inventario en monorepo. Backend Spring 
 
 Requisitos: JDK 21, Maven >=3.6.3, Node 22.22.3+ o 24.15+ compatible con Angular 22, npm y SQL Server accesible. No se incluyen credenciales ni contraseñas predeterminadas.
 
+Para alinear la instalación de Java en Windows, ejecuta `pwsh -NoProfile -File scripts/Set-Java21.ps1`. El parámetro `-SystemPath` requiere una terminal como administrador y prioriza JDK 21 en el PATH del sistema. Se conserva un respaldo local en `.cache/local`. Cierra y abre terminales e IDE después del cambio; `java -version`, `javac -version` y `mvn -version` deben mostrar Java 21. En IntelliJ selecciona el SDK `ms-21` del proyecto y ese mismo JDK para Maven. El archivo `.java-version` declara la versión mayor del proyecto.
+
+
 1. Crear una base vacía `PuntoStock` en SQL Server usando SSMS o `sqlcmd` y ejecutar `database/001_schema.sql` y luego `database/002_password_hash_constraint.sql`. La cuenta de la aplicación debe tener acceso DML, sin permisos DDL en producción. El DDL inicial se ejecuta una sola vez y dentro de una transacción.
 2. Configurar las variables en la terminal del backend (sustituir los valores):
 
