@@ -12,7 +12,7 @@ export class LoginComponent {
   if(this.busy()||!this.username.trim()||!this.password)return;
   this.error.set('');this.busy.set(true);
   this.auth.login(this.username.trim(),this.password).subscribe({next:r=>{
-   this.auth.token.set(r.accessToken);this.auth.roles.set(r.roles);this.auth.username.set(this.username.trim());
+   this.auth.iniciarSesion(r,this.username.trim());
    this.busy.set(false);this.password='';void this.router.navigateByUrl(this.auth.admin()?'/dashboard':'/pos');
   },error:(e:HttpErrorResponse)=>{
    this.busy.set(false);

@@ -17,9 +17,24 @@ export class ApiService {
 @Injectable({providedIn:'root'})
 export class AuthService {
  private http=inject(HttpClient);
+ private readonly sessionKey='puntostock.session';
  token=signal<string|null>(null);roles=signal<string[]>([]);
  username=signal('');
+ constructor(){
+  try {
+   const saved=JSON.parse(sessionStorage.getItem(this.sessionKey)??'null');
+   if(saved&&typeof saved.accessToken==='string'&&typeof saved.username==='string'&&
+      Array.isArray(saved.roles)&&saved.roles.every((role:unknown)=>typeof role==='string')&&
+      typeof saved.expiresAt==='number'&&saved.expiresAt>Date.now()){
+    this.token.set(saved.accessToken);this.roles.set(saved.roles);this.username.set(saved.username);
+   }else{sessionStorage.removeItem(this.sessionKey);}
+  }catch{this.logout();}
+ }
+ iniciarSesion(session:{accessToken:string;roles:string[];expiresIn:number},username:string){
+  this.token.set(session.accessToken);this.roles.set(session.roles);this.username.set(username);
+  try{sessionStorage.setItem(this.sessionKey,JSON.stringify({...session,username,expiresAt:Date.now()+session.expiresIn*1000}));}catch{}
+ }
  login(username:string,password:string){return this.http.post<{accessToken:string;roles:string[];expiresIn:number}>('/api/auth/login',{username,password});}
  admin(){return this.roles().includes('ADMIN');}
- logout(){this.token.set(null);this.roles.set([]);this.username.set('');}
+ logout(){this.token.set(null);this.roles.set([]);this.username.set('');try{sessionStorage.removeItem(this.sessionKey);}catch{}}
 }
