@@ -1,0 +1,38 @@
+<div class="login-layout">
+ <section class="login-brand" aria-label="PuntoStock, ventas e inventario">
+  <div class="brand brand-light"><span class="brand-mark"><ps-icon name="box"/></span><span>PuntoStock<small>VENTAS E INVENTARIO</small></span></div>
+  <div class="login-story">
+   <span class="overline light-overline">TU NEGOCIO, CONECTADO</span>
+   <h1>Menos tareas.<br><span>Más control.</span></h1>
+   <p>Vende, organiza tu inventario y conoce tus resultados desde un mismo lugar.</p>
+   <div class="operation-visual" aria-hidden="true">
+    <div class="visual-heading"><span class="visual-dot"></span> Cada operación cuenta</div>
+    <div class="operation-step"><span class="operation-icon"><ps-icon name="cart"/></span><div><strong>Registra una venta</strong><small>Un punto de venta simple y ágil</small></div><ps-icon name="check"/></div>
+    <div class="operation-connector"></div>
+    <div class="operation-step"><span class="operation-icon"><ps-icon name="box"/></span><div><strong>Actualiza tu inventario</strong><small>Existencias y movimientos conectados</small></div><ps-icon name="check"/></div>
+    <div class="operation-connector"></div>
+    <div class="operation-step"><span class="operation-icon"><ps-icon name="chart"/></span><div><strong>Conoce tus ganancias</strong><small>Información para decidir mejor</small></div><ps-icon name="check"/></div>
+   </div>
+  </div>
+  <div class="brand-footer"><span class="tiny-box"></span> Una visión clara de tu negocio.</div>
+ </section>
+ <section class="login-access" aria-labelledby="login-title">
+  <div class="login-form-wrap">
+   <div class="login-welcome-icon"><ps-icon name="lock"/></div>
+   <span class="overline">ACCESO A TU ESPACIO</span>
+   <h2 id="login-title">Bienvenido de nuevo</h2>
+   <p class="login-intro">Ingresa tus credenciales para continuar.</p>
+   <form #loginForm="ngForm" (ngSubmit)="entrar()" class="login-form">
+    <label for="login-user">Usuario</label>
+    <div class="input-with-icon"><ps-icon name="user"/><input id="login-user" name="usuario" [(ngModel)]="username" required autocomplete="username" placeholder="Tu nombre de usuario" [disabled]="busy()" autocapitalize="none" spellcheck="false"></div>
+    <label for="login-password">Contraseña</label>
+    <div class="input-with-icon"><ps-icon name="lock"/><input id="login-password" name="clave" [type]="visible()?'text':'password'" [(ngModel)]="password" required autocomplete="current-password" placeholder="Ingresa tu contraseña" [disabled]="busy()"><button class="password-toggle" type="button" (click)="visible.set(!visible())" [attr.aria-label]="visible()?'Ocultar contraseña':'Mostrar contraseña'" [attr.aria-pressed]="visible()"><ps-icon [name]="visible()?'eyeOff':'eye'"/></button></div>
+    @if(error()){<div class="notice notice-error" role="alert"><ps-icon name="alert"/><span>{{error()}}</span></div>}
+    <button class="btn btn-primary login-submit" type="submit" [disabled]="loginForm.invalid||busy()">@if(busy()){<span class="spinner"></span> Ingresando…}@else{Ingresar a PuntoStock <ps-icon name="arrow"/>}</button>
+   </form>
+   <p class="access-help">¿Necesitas acceso? <strong>Solicítalo a tu administrador.</strong></p>
+   <div class="login-security"><ps-icon name="shield"/> Acceso protegido según tu rol</div>
+  </div>
+  <footer class="login-footer">PuntoStock <span>Una operación más simple.</span></footer>
+ </section>
+</div>

@@ -1,6 +1,16 @@
 param([int]$Port=18080)
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
+try {
+ $existing=Invoke-WebRequest "http://127.0.0.1:$Port/api/productos" -SkipHttpErrorCheck -TimeoutSec 3
+} catch {$existing=$null}
+if($existing){
+ if($existing.StatusCode -in @(200,401)){
+  Write-Output "La API ya responde en http://127.0.0.1:$Port/api (HTTP $($existing.StatusCode)). No se inició una segunda instancia."
+  return
+ }
+ throw "El puerto $Port ya responde con HTTP $($existing.StatusCode). Revise ese servidor o use -Port."
+}
 $settings=Import-Clixml (Join-Path $root '.cache/local/secrets.clixml')
 function Plain($value){[Net.NetworkCredential]::new('', $value).Password}
 $env:DB_URL="jdbc:sqlserver://localhost:$($settings.Port);databaseName=PuntoStock;encrypt=true;trustServerCertificate=true"
@@ -12,7 +22,11 @@ $env:BOOTSTRAP_PASSWORD=Plain $settings.AdminPassword
 $env:SERVER_ADDRESS='127.0.0.1'
 $env:SERVER_PORT="$Port"
 $jdk=Get-ChildItem (Join-Path $env:USERPROFILE '.jdks') -Directory -ErrorAction SilentlyContinue | Where-Object Name -Match '(^|-)21\.' | Select-Object -First 1
-if($jdk){$env:JAVA_HOME=$jdk.FullName}
+if(!$jdk){throw 'No se encontró JDK 21 en .jdks. Instálalo antes de iniciar el backend.'}
+$env:JAVA_HOME=$jdk.FullName
+$javaExecutable=Join-Path $jdk.FullName 'bin/java.exe'
+if(!(Test-Path $javaExecutable)){throw 'El JDK 21 seleccionado no contiene bin/java.exe.'}
+Write-Output "PuntoStock usará JDK 21: $($jdk.FullName)"
 Push-Location (Join-Path $root 'backend')
 try {
  # En este Windows el socket AF_UNIX interno del JDK falla al conectar.

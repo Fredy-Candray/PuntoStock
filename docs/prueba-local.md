@@ -17,6 +17,10 @@ Ejecutar desde la raíz del repositorio con PowerShell 7. Los comandos permanece
 ./scripts/Start-Frontend.ps1
 ```
 
+Si la terminal está dentro de `backend`, ejecutar `./start-local.cmd`. Dentro de `frontend`, usar `npm start` o `./start-local.cmd`. Los lanzadores reconocen un servidor que ya está activo y avisan en lugar de intentar ocupar de nuevo su puerto.
+
+El lanzador del backend selecciona el JDK 21 instalado y carga la conexión SQL y los secretos locales. Un `mvn spring-boot:run` directo usa el JAVA_HOME de la terminal: si apunta a Java 17, no puede ejecutar las clases compiladas para Java 21. Para trabajar desde el IDE, seleccionar también JDK 21 como SDK del proyecto y JVM de Maven. El frontend selecciona el Node compatible de Codex; un `ng serve` directo todavía utiliza el Node del PATH de la terminal.
+
 Abrir [PuntoStock local](http://127.0.0.1:14200). La API usa `http://127.0.0.1:18080/api`. Estos puertos evitan el 4200 ocupado por otra aplicación. Ambos servidores se enlazan solo a loopback y pueden detenerse con Ctrl+C en su terminal.
 
 Se utiliza el JDK 21 instalado en `.jdks` y el Node 24 de las dependencias locales de Codex si está disponible. `Start-Frontend.ps1 -NodeExecutable ruta/al/node.exe` permite elegir otro Node compatible. Los puertos pueden indicarse con `-Port`; para el frontend el puerto de la API se configura con `-ApiPort`.
@@ -32,6 +36,8 @@ Las contraseñas aleatorias, la cuenta SQL y el secreto JWT se guardan cifrados 
 ```powershell
 ./scripts/Show-LocalCredentials.ps1
 ```
+
+El campo SQL `usuarios.password_hash` contiene un hash BCrypt, no la contraseña para escribir en el login. Si ese campo se reemplaza manualmente por texto y el administrador deja de ingresar, `./scripts/Repair-LocalAdmin.ps1` repara únicamente un hash inválido usando la clave cifrada ya guardada. No sobrescribe contraseñas BCrypt válidas. Consultar después la clave con `Show-LocalCredentials.ps1`.
 
 La cuenta SQL `puntostock_local_app` recibe únicamente SELECT, INSERT, UPDATE y DELETE en el esquema dbo de PuntoStock. La conexión usa TLS con certificado confiado explícitamente para esta prueba local. No se crean permisos de administrador SQL para la aplicación. El bootstrap de Spring crea el administrador solo si no hay usuarios.
 

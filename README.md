@@ -9,6 +9,7 @@ Base funcional de un sistema de ventas e inventario en monorepo. Backend Spring 
 - `frontend/src/app`: componentes Login, Dashboard, POS, Productos e Inventario; servicios HTTP, interceptor y guards.
 - `docs/arquitectura.md`: reglas, contratos de API, decisiones y plan de validación.
 - `docs/git.md`: flujo local y conexión con GitHub.
+- `docs/interfaz.md`: rediseño visual, validaciones en navegador e instrucciones para copiar la clave local del administrador.
 
 ## Configuración local (PowerShell)
 

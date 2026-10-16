@@ -1,10 +1,17 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService,Producto,Movimiento } from '../core/api.service';
-@Component({standalone:true,imports:[FormsModule],template:`<h1>Control de inventario</h1><form #f="ngForm" (ngSubmit)="guardar()"><label>Producto<select name="producto" [(ngModel)]="productoId" required><option [ngValue]="null">Seleccione</option>@for(p of productos();track p.id){<option [ngValue]="p.id">{{p.sku}} · {{p.nombre}} ({{p.stock}})</option>}</select></label><label>Tipo<select name="tipo" [(ngModel)]="tipo">@for(t of tipos;track t){<option>{{t}}</option>}</select></label><label>Cantidad con signo<input name="cantidad" type="number" step="1" [(ngModel)]="cantidad" required></label><label>Motivo<input name="motivo" [(ngModel)]="motivo" required maxlength="500"></label><button [disabled]="busy()||f.invalid||cantidad===0">Registrar</button></form><p>Entradas positivas; salidas negativas. Ajuste: diferencia que se sumará al stock.</p><p role="status">{{mensaje()}}</p><h2>Últimos 200 movimientos</h2><table><thead><tr><th>Fecha UTC</th><th>Producto</th><th>Tipo</th><th>Cantidad</th><th>Stock</th><th>Motivo</th></tr></thead><tbody>@for(m of movimientos();track m.id){<tr><td>{{m.fecha}}</td><td>{{m.productoId}}</td><td>{{m.tipo}}</td><td>{{m.cantidad}}</td><td>{{m.stockAnterior}} → {{m.stockPosterior}}</td><td>{{m.motivo}}</td></tr>}</tbody></table>`})
+import { DatePipe } from '@angular/common';
+import { IconComponent } from '../core/icon.component';
+@Component({standalone:true,imports:[FormsModule,DatePipe,IconComponent],templateUrl:'./inventario.component.html'})
 export class InventarioComponent {
  api=inject(ApiService);productos=signal<Producto[]>([]);movimientos=signal<Movimiento[]>([]);mensaje=signal('');busy=signal(false);
  productoId:number|null=null;tipo='COMPRA';cantidad=1;motivo='';tipos=['COMPRA','DEVOLUCION_CLIENTE','DEVOLUCION_PROVEEDOR','MERMA','AJUSTE'];
  constructor(){this.cargar();}cargar(){this.api.productos().subscribe({next:p=>this.productos.set(p),error:()=>this.mensaje.set('No se pudo consultar stock.')});this.api.movimientos().subscribe({next:m=>this.movimientos.set(m),error:()=>this.mensaje.set('No se pudo consultar movimientos.')});}
- guardar(){if(!this.productoId||this.busy())return;this.busy.set(true);this.api.mover({productoId:this.productoId,tipo:this.tipo,cantidad:this.cantidad,motivo:this.motivo}).subscribe({next:()=>{this.busy.set(false);this.mensaje.set('Movimiento registrado.');this.cargar();},error:()=>{this.busy.set(false);this.mensaje.set('Movimiento rechazado: revise signo, cantidad y stock.');}});}
+ tipoNombre(tipo:string){return ({COMPRA:'Compra / entrada',DEVOLUCION_CLIENTE:'Devolución de cliente',DEVOLUCION_PROVEEDOR:'Devolución al proveedor',MERMA:'Merma / salida',AJUSTE:'Ajuste manual',VENTA:'Venta'} as Record<string,string>)[tipo]||tipo;}
+ nombreProducto(id:number){return this.productos().find(p=>p.id===id)?.nombre||'Producto #'+id;}
+ esSalida(){return ['MERMA','DEVOLUCION_PROVEEDOR'].includes(this.tipo);}
+ delta(){return this.esSalida()?-Math.abs(this.cantidad):this.cantidad;}
+ cambiarTipo(){if(this.tipo!=='AJUSTE')this.cantidad=Math.abs(this.cantidad)||1;}
+ guardar(){if(!this.productoId||this.busy()||!Number.isInteger(this.cantidad)||!this.cantidad)return;this.busy.set(true);this.api.mover({productoId:this.productoId,tipo:this.tipo,cantidad:this.delta(),motivo:this.motivo}).subscribe({next:()=>{this.busy.set(false);this.mensaje.set('Movimiento registrado.');this.motivo='';this.cargar();},error:()=>{this.busy.set(false);this.mensaje.set('Movimiento rechazado: revise cantidad, motivo y stock disponible.');}});}
 }

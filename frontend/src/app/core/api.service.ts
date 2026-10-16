@@ -18,7 +18,8 @@ export class ApiService {
 export class AuthService {
  private http=inject(HttpClient);
  token=signal<string|null>(null);roles=signal<string[]>([]);
+ username=signal('');
  login(username:string,password:string){return this.http.post<{accessToken:string;roles:string[];expiresIn:number}>('/api/auth/login',{username,password});}
  admin(){return this.roles().includes('ADMIN');}
- logout(){this.token.set(null);this.roles.set([]);}
+ logout(){this.token.set(null);this.roles.set([]);this.username.set('');}
 }

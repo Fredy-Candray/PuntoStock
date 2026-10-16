@@ -1,0 +1,17 @@
+<div class="page-heading"><div><span class="overline">EXISTENCIAS</span><h1 style="margin-top:8px">Cada movimiento, registrado.</h1><p>Controla las entradas, las salidas y los ajustes de tu inventario.</p></div><button class="btn btn-secondary" (click)="cargar()" [disabled]="busy()"><ps-icon name="refresh"/> Actualizar</button></div>
+@if(mensaje()){<div class="notice" [class.notice-error]="mensaje().includes('rechazado')||mensaje().startsWith('No se')" [class.notice-info]="!mensaje().includes('rechazado')&&!mensaje().startsWith('No se')" role="status"><ps-icon name="alert"/><span>{{mensaje()}}</span></div>}
+<div class="inventory-layout">
+ <section class="panel"><div class="panel-heading"><div><h2>Registrar movimiento</h2><p>Las existencias se actualizan al confirmar.</p></div></div>
+ <form class="panel-body inventory-form" #f="ngForm" (ngSubmit)="guardar()">
+  <label>Producto<select name="producto" [(ngModel)]="productoId" required><option [ngValue]="null">Selecciona un producto</option>@for(p of productos();track p.id){<option [ngValue]="p.id">{{p.nombre}} · {{p.stock}} uds.</option>}</select></label>
+  <label>Tipo de movimiento<select name="tipo" [(ngModel)]="tipo" (ngModelChange)="cambiarTipo()">@for(t of tipos;track t){<option [value]="t">{{tipoNombre(t)}}</option>}</select></label>
+  <label>{{tipo==='AJUSTE'?'Cantidad a sumar o restar':'Cantidad de unidades'}}<input name="cantidad" type="number" step="1" [min]="tipo==='AJUSTE'?null:1" [(ngModel)]="cantidad" required><span class="field-help">{{tipo==='AJUSTE'?'Usa un valor positivo para sumar o negativo para restar.':esSalida()?'Estas unidades se restarán del stock.':'Estas unidades se agregarán al stock.'}}</span></label>
+  <label>Motivo<textarea name="motivo" [(ngModel)]="motivo" required maxlength="500" placeholder="Describe el motivo o la referencia del movimiento"></textarea></label>
+  <p class="inventory-hint"><strong>Inventario con trazabilidad.</strong><br>Las ventas generan sus salidas automáticamente. Usa este formulario para compras, devoluciones, mermas y ajustes.</p>
+  <button class="btn btn-primary" [disabled]="busy()||f.invalid||cantidad===0">@if(busy()){<span class="spinner"></span> Registrando…}@else{<ps-icon name="check"/> Registrar movimiento}</button>
+ </form></section>
+ <section class="panel"><div class="panel-heading"><div><h2>Historial de movimientos</h2><p>Los últimos 200 registros de tu operación.</p></div><ps-icon name="history"/></div><div class="table-scroll"><table class="inventory-table"><thead><tr><th>Fecha</th><th>Producto y motivo</th><th>Tipo</th><th>Cantidad</th><th>Stock final</th></tr></thead><tbody>
+  @for(m of movimientos();track m.id){<tr><td>{{m.fecha+'Z'|date:'dd/MM/yy':'-0600'}}<br><small class="muted">{{m.fecha+'Z'|date:'HH:mm':'-0600'}}</small></td><td class="inventory-product"><strong>{{nombreProducto(m.productoId)}}</strong><div class="inventory-motive">{{m.motivo}}</div></td><td><span class="movement-label">{{tipoNombre(m.tipo)}}</span></td><td [class.quantity-in]="m.cantidad>0" [class.quantity-out]="m.cantidad<0">{{m.cantidad>0?'+':''}}{{m.cantidad}}</td><td><strong>{{m.stockPosterior}}</strong> <small class="muted">/ antes {{m.stockAnterior}}</small></td></tr>}
+  @empty{<tr><td colspan="5"><div class="empty-state"><ps-icon name="history"/><h3>Aún no hay movimientos</h3><p>Registra una entrada para cargar el inventario inicial.</p></div></td></tr>}
+ </tbody></table></div><div class="panel-footer">Hora de El Salvador · Los movimientos conservan su historial.</div></section>
+</div>
