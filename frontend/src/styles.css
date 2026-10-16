@@ -12,3 +12,5 @@
 @media(max-width:440px){.field-grid{grid-template-columns:1fr}.field-wide{grid-column:auto}.side-nav a{font-size:10px;padding:8px 7px;gap:5px}.side-nav a ps-icon{width:14px;height:14px}.login-story h1{font-size:31px}.login-brand{padding:22px 25px}.login-access{padding-top:30px}.login-footer span{display:none}.account-text{max-width:140px;overflow:hidden}.page-heading .btn{font-size:12px}.cell-primary small{max-width:170px}.form-actions{flex-wrap:wrap}.form-actions .btn{flex:1}.workspace-content{padding-left:14px;padding-right:14px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 .date-filter{flex-direction:row;min-height:43px}
+
+.login-form .remember-session{display:flex;align-items:center;gap:9px;font-size:12px;cursor:pointer;margin:0 0 6px}.remember-session input{width:17px;height:17px;padding:0;margin:0;accent-color:var(--teal);flex:none}.remember-help{font-size:11px;color:var(--muted);margin:0 0 20px;line-height:1.6}

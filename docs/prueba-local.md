@@ -62,3 +62,6 @@ Con los servidores iniciados:
 La suite usa HTTP real y verifica también los registros persistidos en SQL Server. Crea productos con SKU `LOCAL-` y `RACE-`, entradas y ventas de demostración. Conserva esos datos para revisar el POS y el dashboard. Las ejecuciones siguientes generan SKU nuevos.
 
 Incluye permisos, ocultación de costos, cálculo histórico de ganancia, concurrencia sobre la última unidad, revocación por desactivación y firma JWT inválida. Para probar rollback instala temporalmente un trigger que falla únicamente al vender el producto de esa ejecución y lo retira dentro de `finally`. No ejecutar simultáneamente con otra corrida de la suite. El reporte sin secretos se guarda en `docs/prueba-local-resultados.json`.
+
+### Mantener sesión iniciada
+En el login, marca **Mantener sesión iniciada** para conservar el acceso en el mismo navegador durante un máximo de 7 días, incluso después de cerrarlo. Sin marcarla, el acceso dura 15 minutos y se guarda solo para la pestaña. El vencimiento lo determina el JWT emitido por el backend; no se almacena la contraseña. Cerrar sesión elimina ambos almacenamientos. Usa siempre la misma dirección (localhost y 127.0.0.1 tienen almacenamientos diferentes).

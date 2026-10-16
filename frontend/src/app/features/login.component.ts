@@ -7,12 +7,13 @@ import { AuthService } from '../core/api.service';
 @Component({standalone:true,imports:[FormsModule,IconComponent],templateUrl:'./login.component.html'})
 export class LoginComponent {
  auth=inject(AuthService);router=inject(Router);username='';password='';error=signal('');busy=signal(false);
- visible=signal(false);
+ visible=signal(false);rememberMe=false;
+ constructor(){if(this.auth.token())void this.router.navigateByUrl(this.auth.admin()?'/dashboard':'/pos');}
  entrar(){
   if(this.busy()||!this.username.trim()||!this.password)return;
   this.error.set('');this.busy.set(true);
-  this.auth.login(this.username.trim(),this.password).subscribe({next:r=>{
-   this.auth.iniciarSesion(r,this.username.trim());
+  this.auth.login(this.username.trim(),this.password,this.rememberMe).subscribe({next:r=>{
+   this.auth.iniciarSesion(r,this.username.trim(),this.rememberMe);
    this.busy.set(false);this.password='';void this.router.navigateByUrl(this.auth.admin()?'/dashboard':'/pos');
   },error:(e:HttpErrorResponse)=>{
    this.busy.set(false);

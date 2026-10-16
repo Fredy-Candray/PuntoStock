@@ -20,9 +20,10 @@ public class AuthController {
  @PostMapping("/auth/login") public Map<String,Object> login(@Valid @RequestBody Login in){
   var u=usuarios.findByUsername(in.username()).filter(x->x.activo).orElseThrow(()->new ResponseStatusException(UNAUTHORIZED,"Credenciales inválidas"));
   if(!passwords.matches(in.password(),u.passwordHash))throw new ResponseStatusException(UNAUTHORIZED,"Credenciales inválidas");
-  var now=Instant.now();var claims=JwtClaimsSet.builder().issuer("puntostock").subject(u.username).issuedAt(now).expiresAt(now.plusSeconds(900)).build();
+  long expiresIn=in.rememberMe()?604800:900;
+  var now=Instant.now();var claims=JwtClaimsSet.builder().issuer("puntostock").subject(u.username).issuedAt(now).expiresAt(now.plusSeconds(expiresIn)).build();
   var token=encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(),claims)).getTokenValue();
-  return Map.of("accessToken",token,"expiresIn",900,"roles",u.roles.stream().map(r->r.nombre).toList());
+  return Map.of("accessToken",token,"expiresIn",expiresIn,"roles",u.roles.stream().map(r->r.nombre).toList());
  }
  @GetMapping("/usuarios") @PreAuthorize("hasRole('ADMIN')") public List<Map<String,Object>> listar(){return usuarios.findAll().stream().map(u->Map.<String,Object>of("id",u.id,"username",u.username,"activo",u.activo,"roles",u.roles.stream().map(r->r.nombre).toList())).toList();}
  @PostMapping("/usuarios") @PreAuthorize("hasRole('ADMIN')") @Transactional

@@ -11,7 +11,7 @@ public final class Contratos {
  public record VentaInput(@NotEmpty @Size(max=100) List<@Valid Linea> lineas) {}
  public record VentaResultado(Long id,BigDecimal total) {}
  public record MovimientoInput(@NotNull @Positive Long productoId,@NotBlank String tipo,int cantidad,@NotBlank @Size(max=500) String motivo) {}
- public record Login(@NotBlank String username,@NotBlank String password) {}
+ public record Login(@NotBlank String username,@NotBlank String password,boolean rememberMe) {}
  public record UsuarioInput(@NotBlank @Size(max=80) String username,@NotBlank @Size(min=12,max=72) String password,
   @Pattern(regexp="ADMIN|VENDEDOR") @NotNull String rol) {}
 }

@@ -49,7 +49,7 @@ Abrir `http://localhost:4200`. El proxy de desarrollo envía `/api` al puerto 80
 
 ## Seguridad y alcance
 
-JWT HS256 con emisor validado, duración de 15 minutos y token solo en memoria del navegador: recargar requiere iniciar sesión. Cada solicitud autenticada consulta el estado y roles actuales del usuario. La API aplica RBAC; los guards solo controlan navegación. Costos y ganancias no se exponen al vendedor. Usuarios con BCrypt y sin campos de contraseña en respuestas.
+JWT HS256 con emisor validado: 15 minutos con almacenamiento de sesión en la pestaña, o 7 días en almacenamiento persistente al marcar «Mantener sesión iniciada». La recarga conserva el acceso hasta su vencimiento; cerrar sesión elimina ambos almacenamientos. No se guarda la contraseña en el navegador. Cada solicitud autenticada consulta el estado y roles actuales del usuario. La API aplica RBAC; los guards solo controlan navegación. Costos y ganancias no se exponen al vendedor. Usuarios con BCrypt y sin campos de contraseña en respuestas.
 
 El alta de producto parte con stock cero; las entradas y ajustes son el único camino administrativo para modificar existencias. La baja es lógica para preservar historial. Los precios se consultan en cada petición y el POS los relee después de una venta; no hay difusión instantánea entre sesiones mediante WebSocket/SSE. El servidor confirma siempre con los precios vigentes y calcula importes con `BigDecimal`.
 

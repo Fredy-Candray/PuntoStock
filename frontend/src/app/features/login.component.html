@@ -27,6 +27,8 @@
     <div class="input-with-icon"><ps-icon name="user"/><input id="login-user" name="usuario" [(ngModel)]="username" required autocomplete="username" placeholder="Tu nombre de usuario" [disabled]="busy()" autocapitalize="none" spellcheck="false"></div>
     <label for="login-password">Contraseña</label>
     <div class="input-with-icon"><ps-icon name="lock"/><input id="login-password" name="clave" [type]="visible()?'text':'password'" [(ngModel)]="password" required autocomplete="current-password" placeholder="Ingresa tu contraseña" [disabled]="busy()"><button class="password-toggle" type="button" (click)="visible.set(!visible())" [attr.aria-label]="visible()?'Ocultar contraseña':'Mostrar contraseña'" [attr.aria-pressed]="visible()"><ps-icon [name]="visible()?'eyeOff':'eye'"/></button></div>
+    <label class="remember-session"><input type="checkbox" name="rememberMe" [(ngModel)]="rememberMe" [disabled]="busy()" aria-describedby="remember-help"><span>Mantener sesión iniciada</span></label>
+    <p id="remember-help" class="remember-help">Conserva el acceso en este navegador hasta por 7 días.</p>
     @if(error()){<div class="notice notice-error" role="alert"><ps-icon name="alert"/><span>{{error()}}</span></div>}
     <button class="btn btn-primary login-submit" type="submit" [disabled]="loginForm.invalid||busy()">@if(busy()){<span class="spinner"></span> Ingresando…}@else{Ingresar a PuntoStock <ps-icon name="arrow"/>}</button>
    </form>
