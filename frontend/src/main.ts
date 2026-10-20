@@ -7,6 +7,7 @@ import { filter,map } from 'rxjs';
 import { IconComponent } from './app/core/icon.component';
 import { AuthService } from './app/core/api.service';
 import { authGuard,adminGuard,authInterceptor } from './app/core/security';
+import { ThemeToggleComponent } from './app/core/theme-toggle.component';
 const routes:Routes=[
  {path:'login',loadComponent:()=>import('./app/features/login.component').then(m=>m.LoginComponent)},
  {path:'pos',canActivate:[authGuard],loadComponent:()=>import('./app/features/pos.component').then(m=>m.PosComponent)},
@@ -15,7 +16,7 @@ const routes:Routes=[
  {path:'inventario',canActivate:[authGuard,adminGuard],loadComponent:()=>import('./app/features/inventario.component').then(m=>m.InventarioComponent)},
  {path:'**',redirectTo:'pos'}
 ];
-@Component({selector:'app-root',standalone:true,imports:[RouterLink,RouterLinkActive,RouterOutlet,IconComponent],template:`
+@Component({selector:'app-root',standalone:true,imports:[RouterLink,RouterLinkActive,RouterOutlet,IconComponent,ThemeToggleComponent],template:`
  @if(auth.token()&&!url().startsWith('/login')){
   <div class="app-layout">
    <aside class="sidebar">
@@ -26,7 +27,7 @@ const routes:Routes=[
      <a routerLink="/pos" routerLinkActive="active"><ps-icon name="cart"/> Punto de venta</a>
      @if(auth.admin()){<a routerLink="/productos" routerLinkActive="active"><ps-icon name="box"/> Productos</a><a routerLink="/inventario" routerLinkActive="active"><ps-icon name="history"/> Inventario</a>}
     </nav>
-    <div class="sidebar-bottom"><div class="sidebar-tip"><ps-icon name="shield"/><span>{{auth.admin()?'Administración del negocio':'Espacio del vendedor'}}<small>Permisos según tu rol</small></span></div><button class="logout-button" (click)="salir()"><ps-icon name="logout"/> Cerrar sesión</button></div>
+    <div class="sidebar-bottom"><div class="sidebar-tip"><ps-icon name="shield"/><span>{{auth.admin()?'Administración del negocio':'Espacio del vendedor'}}<small>Permisos según tu rol</small></span></div><button class="logout-button" (click)="salir()"><ps-icon name="logout"/> Cerrar sesión</button><div class="sidebar-theme"><ps-theme-toggle/></div></div>
    </aside>
    <div class="workspace">
     <header class="workspace-header"><div><span class="header-caption">TU NEGOCIO, BAJO CONTROL</span><strong>{{pageTitle()}}</strong></div><div class="account"><div class="account-text"><strong>{{auth.username()||'Mi cuenta'}}</strong><span>{{auth.admin()?'Administrador':'Vendedor'}}</span></div><span class="avatar">{{(auth.username()||'P').slice(0,1).toUpperCase()}}</span></div></header>
@@ -34,7 +35,7 @@ const routes:Routes=[
     <footer class="workspace-footer"><span>PuntoStock · Ventas e inventario</span><span>Hecho para simplificar tu operación</span></footer>
    </div>
   </div>
- }@else{<router-outlet/>}
+ }@else{<div class="login-theme-toggle"><ps-theme-toggle/></div><router-outlet/>}
 `})
 class App {
  auth=inject(AuthService);router=inject(Router);

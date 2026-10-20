@@ -65,3 +65,6 @@ Incluye permisos, ocultación de costos, cálculo histórico de ganancia, concur
 
 ### Mantener sesión iniciada
 En el login, marca **Mantener sesión iniciada** para conservar el acceso en el mismo navegador durante un máximo de 7 días, incluso después de cerrarlo. Sin marcarla, el acceso dura 15 minutos y se guarda solo para la pestaña. El vencimiento lo determina el JWT emitido por el backend; no se almacena la contraseña. Cerrar sesión elimina ambos almacenamientos. Usa siempre la misma dirección (localhost y 127.0.0.1 tienen almacenamientos diferentes).
+
+### Tema claro y oscuro
+El botón de luna/sol al pie del menú lateral alterna el tema. En móvil está junto al botón de cerrar sesión; en el login aparece en la esquina superior derecha. La preferencia se guarda en el navegador y se conserva al recargar o volver a abrir el sistema. Cambiar de tema no modifica la sesión ni los datos.

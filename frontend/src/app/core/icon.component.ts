@@ -3,6 +3,8 @@ import { Component, Input } from '@angular/core';
 export class IconComponent {
  @Input() name='box';
  readonly paths:Record<string,string>={
+  moon:'M20.9 13.2A9 9 0 0 1 10.8 3.1a9 9 0 1 0 10.1 10.1Z',
+  sun:'M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5',
   box:'M12 3 3 7.5v9L12 21l9-4.5v-9L12 3ZM3 7.5l9 4.5 9-4.5M12 12v9M7.5 5.25l9 4.5',
   grid:'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
   cart:'M2 3h3l2.5 12h11L21 7H6M9 20h.01M17 20h.01M8 18h10',
