@@ -1,5 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { tap } from 'rxjs';
+export interface Perfil {id:number;username:string;nombre:string;correo:string|null;telefono:string|null;roles:string[];activo:boolean;fechaCreacion:string|null;fotoPerfil:string|null;fotoPortada:string|null}
+export interface PerfilInput {nombre:string;correo:string;telefono:string}
 export interface Producto {id:number;sku:string;nombre:string;descripcion:string;precioCompra?:number;precioVenta:number;stock:number;fotoUrl:string}
 export type ProductoInput = Omit<Producto,'id'|'stock'>;
 export interface Movimiento {id:number;productoId:number;tipo:string;cantidad:number;fecha:string;motivo:string;stockAnterior:number;stockPosterior:number}
@@ -20,6 +23,7 @@ export class AuthService {
  private readonly sessionKey='puntostock.session';
  token=signal<string|null>(null);roles=signal<string[]>([]);
  username=signal('');
+ perfil=signal<Perfil|null>(null);
  constructor(){
   for(const persistent of [false,true]){
   try {
@@ -40,6 +44,9 @@ export class AuthService {
   try{(rememberMe?localStorage:sessionStorage).setItem(this.sessionKey,JSON.stringify({...session,username,expiresAt:Date.now()+session.expiresIn*1000}));}catch{}
  }
  login(username:string,password:string,rememberMe=false){return this.http.post<{accessToken:string;roles:string[];expiresIn:number}>('/api/auth/login',{username,password,rememberMe});}
+ cargarPerfil(){return this.http.get<Perfil>('/api/auth/me').pipe(tap(p=>this.perfil.set(p)));}
+ guardarPerfil(input:PerfilInput){return this.http.put<Perfil>('/api/auth/me',input).pipe(tap(p=>this.perfil.set(p)));}
+ guardarFoto(imagen:string,portada=false){return this.http.put<Perfil>('/api/auth/me/'+(portada?'portada':'foto'),{imagen}).pipe(tap(p=>this.perfil.set(p)));}
  admin(){return this.roles().includes('ADMIN');}
- logout(){this.token.set(null);this.roles.set([]);this.username.set('');for(const persistent of [false,true]){try{(persistent?localStorage:sessionStorage).removeItem(this.sessionKey);}catch{}}}
+ logout(){this.token.set(null);this.roles.set([]);this.username.set('');this.perfil.set(null);for(const persistent of [false,true]){try{(persistent?localStorage:sessionStorage).removeItem(this.sessionKey);}catch{}}}
 }

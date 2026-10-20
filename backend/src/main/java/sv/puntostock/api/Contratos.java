@@ -12,6 +12,9 @@ public final class Contratos {
  public record VentaResultado(Long id,BigDecimal total) {}
  public record MovimientoInput(@NotNull @Positive Long productoId,@NotBlank String tipo,int cantidad,@NotBlank @Size(max=500) String motivo) {}
  public record Login(@NotBlank String username,@NotBlank String password,boolean rememberMe) {}
+ public record PerfilInput(@NotBlank @Size(max=160) String nombre,@NotBlank @Email @Size(max=254) String correo,
+  @Size(max=30) @Pattern(regexp="[+0-9 ()-]*") String telefono) {}
+ public record FotoInput(@NotNull @Size(max=1_500_000) String imagen) {}
  public record UsuarioInput(@NotBlank @Size(max=80) String username,@NotBlank @Size(min=12,max=72) String password,
   @Pattern(regexp="ADMIN|VENDEDOR") @NotNull String rol) {}
 }

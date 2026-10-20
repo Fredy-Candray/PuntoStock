@@ -4,7 +4,7 @@ Base funcional de un sistema de ventas e inventario en monorepo. Backend Spring 
 
 ## Contenido
 
-- `database/001_schema.sql`: DDL con seis entidades de negocio, roles y tabla intermedia, claves foráneas, índices y restricciones. `002_password_hash_constraint.sql` valida el formato BCrypt de las contraseñas.
+- `database/001_schema.sql`: DDL con seis entidades de negocio, roles y tabla intermedia, claves foráneas, índices y restricciones. `002_password_hash_constraint.sql` valida BCrypt y `003_user_profile.sql` agrega los datos, fotos y fecha de creación del perfil.
 - `backend/src/main/java/sv/puntostock`: capas `api`, `service`, `repository`, `entity` y `security`.
 - `frontend/src/app`: componentes Login, Dashboard, POS, Productos e Inventario; servicios HTTP, interceptor y guards.
 - `docs/arquitectura.md`: reglas, contratos de API, decisiones y plan de validación.
@@ -20,7 +20,7 @@ Requisitos: JDK 21, Maven >=3.6.3, Node 22.22.3+ o 24.15+ compatible con Angular
 Para alinear la instalación de Java en Windows, ejecuta `pwsh -NoProfile -File scripts/Set-Java21.ps1`. El parámetro `-SystemPath` requiere una terminal como administrador y prioriza JDK 21 en el PATH del sistema. Se conserva un respaldo local en `.cache/local`. Cierra y abre terminales e IDE después del cambio; `java -version`, `javac -version` y `mvn -version` deben mostrar Java 21. En IntelliJ selecciona el SDK `ms-21` del proyecto y ese mismo JDK para Maven. El archivo `.java-version` declara la versión mayor del proyecto.
 
 
-1. Crear una base vacía `PuntoStock` en SQL Server usando SSMS o `sqlcmd` y ejecutar `database/001_schema.sql` y luego `database/002_password_hash_constraint.sql`. La cuenta de la aplicación debe tener acceso DML, sin permisos DDL en producción. El DDL inicial se ejecuta una sola vez y dentro de una transacción.
+1. Crear una base vacía `PuntoStock` en SQL Server usando SSMS o `sqlcmd` y ejecutar, en orden, `database/001_schema.sql`, `database/002_password_hash_constraint.sql` y `database/003_user_profile.sql`. La cuenta de la aplicación debe tener acceso DML, sin permisos DDL en producción. El DDL inicial se ejecuta una sola vez y dentro de una transacción. Las ampliaciones 002 y 003 se pueden volver a ejecutar.
 2. Configurar las variables en la terminal del backend (sustituir los valores):
 
 ```powershell
