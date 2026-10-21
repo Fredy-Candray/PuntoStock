@@ -29,7 +29,7 @@ const routes:Routes=[
      <a routerLink="/pos" routerLinkActive="active"><ps-icon name="cart"/> Punto de venta</a>
      @if(auth.admin()){<a routerLink="/productos" routerLinkActive="active"><ps-icon name="box"/> Productos</a><a routerLink="/inventario" routerLinkActive="active"><ps-icon name="history"/> Inventario</a>}
     </nav>
-    <div class="sidebar-bottom"><div class="sidebar-tip"><ps-icon name="shield"/><span>{{auth.admin()?'Administración del negocio':'Espacio del vendedor'}}<small>Permisos según tu rol</small></span></div><div class="sidebar-theme"><ps-theme-toggle/></div></div>
+    <div class="sidebar-bottom"><div class="sidebar-theme"><ps-theme-toggle/></div></div>
    </aside>
    <div class="workspace">
     <header class="workspace-header"><div><span class="header-caption">TU NEGOCIO, BAJO CONTROL</span><strong>{{pageTitle()}}</strong></div><ps-user-menu/></header>
