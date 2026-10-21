@@ -68,3 +68,11 @@ Los tokens se guardan en signals en memoria. El interceptor añade Bearer solo a
 7. Precio modificado después de venta: ganancia histórica permanece igual.
 
 Evolución sugerida: migraciones Flyway versionadas, pruebas Testcontainers SQL Server, idempotencia, recibos y reversos financieros, paginación, UI de usuarios y roles, auditoría de cambios de precio, HTTPS, rate limiting y respaldos probados. No añadir una segunda vía de actualización de stock.
+
+## Papelería: catálogo, servicios y ventas
+
+La ampliación 004 permite distinguir artículos de servicios, clasificar por categoría y marca, configurar unidad, ubicación y stock mínimo, y consultar el historial de cobros. `GET /api/ventas?fecha=AAAA-MM-DD&pagina=0` devuelve 20 registros por página y los totales del día. Administradores consultan el negocio y vendedores su propia actividad. `GET /api/ventas/{id}` recupera un comprobante sin costos ni ganancias.
+
+`POST /api/ventas` acepta líneas, observaciones, medio de pago, importe recibido, total esperado, cliente y referencia opcionales, y `solicitudId` UUID. El frontend siempre envía un UUID y total esperado. Se bloquea el usuario antes de consultar la solicitud; una repetición con el mismo contenido devuelve la venta existente y una repetición con contenido distinto se rechaza. Un índice único `(usuario_id, solicitud_id)` refuerza la regla en SQL Server. Los productos se bloquean por ID en orden consistente. Artículos y servicios comparten cálculo monetario con BigDecimal; solo los artículos generan salidas de inventario. El pago, detalle, ganancias y movimientos se guardan en una sola transacción.
+
+`GET /api/ventas/solicitud/{uuid}` consulta una operación pendiente de la propia cuenta y usa el mismo orden de bloqueo. Las ventas nuevas conservan nombre y SKU además de los precios históricos. Los registros antiguos no se rellenan con medios de pago inventados. La compatibilidad del POST antiguo, que solo enviaba líneas, se mantiene como efectivo exacto; esos clientes deben incorporar el UUID para obtener protección frente a reintentos.

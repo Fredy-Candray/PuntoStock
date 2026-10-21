@@ -73,3 +73,6 @@ El botón de luna/sol al pie del menú lateral alterna el tema. En móvil está 
 Haz clic en tu nombre o avatar, en la esquina superior derecha, para abrir **Perfil** o **Cerrar sesión**. El perfil permite editar nombre, correo y teléfono, y subir, recortar, ampliar o quitar foto y portada. El usuario de acceso y los roles se consultan sin modificarlos desde este formulario. Cada petición usa la identidad autenticada; no acepta el ID de otro usuario.
 
 Antes de desplegar esta versión sobre una base existente, aplica `database/003_user_profile.sql` con una cuenta de administración de PuntoStock. El iniciador de instalación local también la incluye. La migración agrega columnas opcionales, conserva credenciales y roles y no inventa fechas de alta para cuentas existentes. Las cuentas nuevas registran su fecha en UTC. La imagen seleccionada se recorta en el navegador y el backend valida el contenido JPEG/PNG (hasta 1 MB y 4 megapíxeles) antes de guardarlo en SQL Server.
+
+### Papelería y servicios
+Consulta `docs/operacion-papeleria.md` para preparar el catálogo, registrar existencias, cobrar, imprimir comprobantes y recuperar ventas pendientes. La actualización requiere `database/004_retail_pos.sql` antes de iniciar el backend nuevo. No modifica importes históricos ni inventa medios de pago de ventas anteriores.

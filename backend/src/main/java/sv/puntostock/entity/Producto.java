@@ -14,5 +14,11 @@ public class Producto {
  @Column(nullable=false) public int stock;
  @org.hibernate.annotations.Nationalized @Column(name="foto_url",nullable=false,length=1000) public String fotoUrl;
  @Column(nullable=false) public boolean activo=true;
+ @Column(nullable=false,length=20) public String tipo="PRODUCTO";
+ @org.hibernate.annotations.Nationalized @Column(nullable=false,length=80) public String categoria="General";
+ @org.hibernate.annotations.Nationalized @Column(nullable=false,length=80) public String marca="";
+ @Column(nullable=false,length=20) public String unidad="UNIDAD";
+ @org.hibernate.annotations.Nationalized @Column(nullable=false,length=80) public String ubicacion="";
+ @Column(name="stock_minimo",nullable=false) public int stockMinimo=5;
  @Version public long version;
 }

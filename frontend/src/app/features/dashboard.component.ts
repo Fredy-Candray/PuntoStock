@@ -12,7 +12,7 @@ export class DashboardComponent {
  productos=signal<Producto[]>([]);movimientos=signal<Movimiento[]>([]);loading=signal(true);
  constructor(){this.cargar();}
  cargar(){this.loading.set(true);this.error.set('');forkJoin({reporte:this.api.ganancia(this.fecha),productos:this.api.productos(),movimientos:this.api.movimientos()}).subscribe({next:r=>{this.ganancia.set(r.reporte.ganancia);this.productos.set(r.productos);this.movimientos.set(r.movimientos);this.loading.set(false);},error:()=>{this.loading.set(false);this.error.set('No se pudo cargar el resumen. Actualiza para intentarlo de nuevo.');}});}
- unidades(){return this.productos().reduce((n,p)=>n+p.stock,0);}
- bajoStock(){return this.productos().filter(p=>p.stock<=5);}
+ unidades(){return this.productos().filter(p=>p.tipo!=='SERVICIO').reduce((n,p)=>n+p.stock,0);}
+ bajoStock(){return this.productos().filter(p=>p.tipo!=='SERVICIO'&&p.stock<=p.stockMinimo);}
  nombreProducto(id:number){return this.productos().find(p=>p.id===id)?.nombre||'Producto #'+id;}
 }

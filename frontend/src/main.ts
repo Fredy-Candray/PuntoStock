@@ -13,6 +13,7 @@ const routes:Routes=[
  {path:'login',loadComponent:()=>import('./app/features/login.component').then(m=>m.LoginComponent)},
  {path:'perfil',canActivate:[authGuard],loadComponent:()=>import('./app/features/perfil.component').then(m=>m.PerfilComponent)},
  {path:'pos',canActivate:[authGuard],loadComponent:()=>import('./app/features/pos.component').then(m=>m.PosComponent)},
+ {path:'ventas',canActivate:[authGuard],loadComponent:()=>import('./app/features/ventas.component').then(m=>m.VentasComponent)},
  {path:'dashboard',canActivate:[authGuard,adminGuard],loadComponent:()=>import('./app/features/dashboard.component').then(m=>m.DashboardComponent)},
  {path:'productos',canActivate:[authGuard,adminGuard],loadComponent:()=>import('./app/features/productos.component').then(m=>m.ProductosComponent)},
  {path:'inventario',canActivate:[authGuard,adminGuard],loadComponent:()=>import('./app/features/inventario.component').then(m=>m.InventarioComponent)},
@@ -27,6 +28,7 @@ const routes:Routes=[
     <nav class="side-nav" aria-label="Navegación principal">
      @if(auth.admin()){<a routerLink="/dashboard" routerLinkActive="active"><ps-icon name="grid"/> Resumen</a>}
      <a routerLink="/pos" routerLinkActive="active"><ps-icon name="cart"/> Punto de venta</a>
+     <a routerLink="/ventas" routerLinkActive="active"><ps-icon name="receipt"/> Ventas</a>
      @if(auth.admin()){<a routerLink="/productos" routerLinkActive="active"><ps-icon name="box"/> Productos</a><a routerLink="/inventario" routerLinkActive="active"><ps-icon name="history"/> Inventario</a>}
     </nav>
     <div class="sidebar-bottom"><div class="sidebar-theme"><ps-theme-toggle/></div></div>
@@ -43,6 +45,6 @@ class App {
  auth=inject(AuthService);router=inject(Router);
  url=toSignal(this.router.events.pipe(filter((event):event is NavigationEnd=>event instanceof NavigationEnd),map(event=>event.urlAfterRedirects)),{initialValue:this.router.url});
  constructor(){effect(onCleanup=>{if(this.auth.token()){const sub=this.auth.cargarPerfil().subscribe({error:()=>{}});onCleanup(()=>sub.unsubscribe());}});}
- pageTitle(){return ({'/dashboard':'Resumen general','/pos':'Punto de venta','/productos':'Catálogo de productos','/inventario':'Control de inventario','/perfil':'Mi perfil'} as Record<string,string>)[this.url()]||'PuntoStock';}
+ pageTitle(){return ({'/dashboard':'Resumen general','/pos':'Punto de venta','/ventas':'Historial de ventas','/productos':'Artículos y servicios','/inventario':'Control de inventario','/perfil':'Mi perfil'} as Record<string,string>)[this.url()]||'PuntoStock';}
 }
 bootstrapApplication(App,{providers:[provideHttpClient(withInterceptors([authInterceptor])),provideRouter(routes)]}).catch(console.error);

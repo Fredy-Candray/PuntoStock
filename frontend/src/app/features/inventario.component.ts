@@ -7,7 +7,7 @@ import { IconComponent } from '../core/icon.component';
 export class InventarioComponent {
  api=inject(ApiService);productos=signal<Producto[]>([]);movimientos=signal<Movimiento[]>([]);mensaje=signal('');busy=signal(false);
  productoId:number|null=null;tipo='COMPRA';cantidad=1;motivo='';tipos=['COMPRA','DEVOLUCION_CLIENTE','DEVOLUCION_PROVEEDOR','MERMA','AJUSTE'];
- constructor(){this.cargar();}cargar(){this.api.productos().subscribe({next:p=>this.productos.set(p),error:()=>this.mensaje.set('No se pudo consultar stock.')});this.api.movimientos().subscribe({next:m=>this.movimientos.set(m),error:()=>this.mensaje.set('No se pudo consultar movimientos.')});}
+ constructor(){this.cargar();}cargar(){this.api.productos().subscribe({next:p=>this.productos.set(p.filter(x=>x.tipo!=='SERVICIO')),error:()=>this.mensaje.set('No se pudo consultar stock.')});this.api.movimientos().subscribe({next:m=>this.movimientos.set(m),error:()=>this.mensaje.set('No se pudo consultar movimientos.')});}
  tipoNombre(tipo:string){return ({COMPRA:'Compra / entrada',DEVOLUCION_CLIENTE:'Devolución de cliente',DEVOLUCION_PROVEEDOR:'Devolución al proveedor',MERMA:'Merma / salida',AJUSTE:'Ajuste manual',VENTA:'Venta'} as Record<string,string>)[tipo]||tipo;}
  nombreProducto(id:number){return this.productos().find(p=>p.id===id)?.nombre||'Producto #'+id;}
  esSalida(){return ['MERMA','DEVOLUCION_PROVEEDOR'].includes(this.tipo);}

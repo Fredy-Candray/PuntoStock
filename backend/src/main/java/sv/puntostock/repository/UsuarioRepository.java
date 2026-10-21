@@ -5,4 +5,8 @@ import org.springframework.data.repository.query.Param;
 import java.util.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-public interface UsuarioRepository extends JpaRepository<Usuario,Long> { Optional<Usuario> findByUsername(String username); }
+public interface UsuarioRepository extends JpaRepository<Usuario,Long> {
+ Optional<Usuario> findByUsername(String username);
+ @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE) @Query("select u from Usuario u where u.username=:username")
+ Optional<Usuario> bloquear(@Param("username") String username);
+}

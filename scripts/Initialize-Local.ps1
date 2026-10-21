@@ -27,6 +27,7 @@ try {
  if([int]$cmd.ExecuteScalar() -eq 0){Sql (Get-Content (Join-Path $root 'database/001_schema.sql') -Raw)}
  Sql (Get-Content (Join-Path $root 'database/002_password_hash_constraint.sql') -Raw)
   Sql (Get-Content (Join-Path $root 'database/003_user_profile.sql') -Raw)
+  Sql (Get-Content (Join-Path $root 'database/004_retail_pos.sql') -Raw)
  $connection.ChangeDatabase('master')
  $password=(Plain $settings.DbPassword).Replace("'","''")
  Sql "IF SUSER_ID(N'puntostock_local_app') IS NULL CREATE LOGIN [puntostock_local_app] WITH PASSWORD=N'$password', CHECK_POLICY=ON, DEFAULT_DATABASE=[PuntoStock];"
