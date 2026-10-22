@@ -3,6 +3,7 @@ import { Component, Input } from '@angular/core';
 export class IconComponent {
  @Input() name='box';
  readonly paths:Record<string,string>={
+  share:'M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM8.6 10.5l6.8-4M8.6 13.5l6.8 4',
   printer:'M6 9V3h12v6M6 18H3V9h18v9h-3M6 14h12v7H6zM17 11h.01',
   receipt:'M5 3h14v19l-3-2-4 2-4-2-3 2V3ZM8 7h8M8 11h8M8 15h5',
   chevronDown:'m6 9 6 6 6-6',camera:'M3 7h4l2-3h6l2 3h4v14H3zM16 13a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z',

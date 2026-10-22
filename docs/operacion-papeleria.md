@@ -49,6 +49,8 @@ Los totales de efectivo representan ventas en efectivo, no el saldo de una caja 
 
 El comprobante ofrece **Continuar**, **Descargar PDF** e **Imprimir comprobante**. La descarga está disponible al confirmar el cobro y al abrir una venta desde el historial. Genera `PuntoStock-V-000001.pdf` (con el número correspondiente) en el navegador, usando los datos de la venta registrada y sin volver a cobrar ni modificar inventario. Incluye cliente, vendedor, fecha de El Salvador, detalle, total, medio de pago, importe recibido, cambio y referencia cuando corresponda. Los comprobantes largos se dividen en páginas.
 
+**Compartir PDF** entrega el archivo al menú de compartir del dispositivo: el usuario elige la aplicación y el destinatario. WhatsApp y correo aparecen si están disponibles como destinos en ese equipo. El PDF se prepara antes del clic para conservar el permiso de interacción del navegador. No se sube a un servidor público ni se envía automáticamente a ningún contacto. Si el navegador no admite compartir archivos, o bloquea la operación, se ofrece descargar el PDF para adjuntarlo manualmente. Cancelar el menú no descarga archivos ni genera otro cobro. El soporte depende del navegador y requiere un contexto seguro (HTTPS o localhost); una dirección HTTP de la red local puede necesitar HTTPS para habilitar esta función.
+
 ## Próximas funciones para una operación más completa
 
 - Apertura, movimientos y cierre de caja con conciliación del efectivo.
