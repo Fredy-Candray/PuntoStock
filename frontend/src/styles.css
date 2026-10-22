@@ -107,3 +107,27 @@ ps-user-menu{display:block;min-width:0}.user-menu{position:relative}.user-menu-t
  @page{margin:4mm}
 }
 .cash-payment{display:grid;gap:7px}
+.login-store-icon{display:block;width:64px;height:64px;object-fit:contain;flex:none}
+@media(max-width:760px){.login-store-icon{width:48px;height:48px}}
+.login-brand>.brand{justify-content:center;width:100%;font-size:32px;gap:16px}
+.login-brand>.brand .login-store-icon{width:100px;height:100px}
+.login-brand>.brand small{font-size:9px;letter-spacing:2px}
+.login-brand .login-story h1{font-size:clamp(34px,3.2vw,48px);letter-spacing:-1.7px;margin-top:0}
+@media(max-width:1000px){.login-brand>.brand{font-size:27px;gap:12px}.login-brand>.brand .login-store-icon{width:84px;height:84px}.login-brand .login-story h1{font-size:36px}}
+@media(max-width:760px){.login-brand>.brand{font-size:26px}.login-brand>.brand .login-store-icon{width:76px;height:76px}.login-brand .login-story h1{font-size:30px;letter-spacing:-1px}}
+@media(max-width:440px){.login-brand .login-story h1{font-size:27px}}
+/* Identidad de la tienda y marca de agua decorativa en las pantallas de inicio. */
+.sidebar .sidebar-brand{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 8px;background:#f1f8f4;border:1px solid #dceae2;border-radius:12px}
+.sidebar-logo{display:block;width:100%;height:auto;max-width:220px;object-fit:contain}
+.sidebar .sidebar-brand small{font-size:8px;letter-spacing:1.5px;color:#47665e}
+.workspace-content.home-watermark{position:relative;isolation:isolate}
+.home-watermark::after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;background:url('/assets/puntostock-logo-tienda-v1.png') center 58% / min(76%,850px) auto no-repeat;opacity:.035}
+[data-theme=dark] .sidebar .sidebar-brand{background:#deeee5;border-color:#adcabc}
+[data-theme=dark] .home-watermark::after{opacity:.055;filter:grayscale(1) brightness(2.5)}
+@media(max-width:760px){.sidebar .sidebar-brand{width:190px;gap:4px;padding:7px 10px;margin-bottom:14px}.sidebar .sidebar-brand small{font-size:6px}.home-watermark::after{background-size:90% auto;opacity:.025}}
+@media print{.home-watermark::after{display:none}}
+/* Catálogo y cobro comparten la misma fila bajo un encabezado compacto. */
+.pos-catalog{min-width:0}.pos-actions{margin-bottom:16px;justify-content:flex-start}.pos-screen .cart-panel>.panel-heading{padding:15px 20px}.pos-screen .cart-panel>.empty-state{padding:20px 16px}.pos-screen .cart-panel>.empty-state ps-icon{width:28px;height:28px}.pos-screen .cart-panel>.empty-state h3{margin:8px 0}.pos-screen .cart-totals{padding:16px 20px}.pos-screen .cart-total{margin:0 0 12px}.pos-screen .payment-form{gap:10px;margin-top:12px}.pos-screen .payment-form input,.pos-screen .payment-form select{min-height:36px;padding:8px 10px}.pos-screen .cart-totals>.btn{margin-top:12px}.pos-screen .cart-totals>p{margin-bottom:0}.pos-screen .cart-lines{max-height:200px}.pos-screen .cart-line{padding:12px 0}
+.pos-screen .pos-heading{align-items:center;margin-bottom:18px;gap:14px}.pos-heading h1{margin-bottom:0}.pos-heading .pos-actions{margin-bottom:0;flex-shrink:0}
+@media(min-width:1001px){.pos-screen .cart-panel{top:16px;max-height:calc(100dvh - 32px);overflow-y:auto;scrollbar-width:thin}.pos-screen .cart-panel>.panel-heading{position:sticky;top:0;z-index:1;background:var(--canvas)}.pos-screen .cart-lines{max-height:clamp(100px,calc(100dvh - 610px),240px)}}
+@media(max-width:1000px){.pos-screen .cart-panel{max-height:none}.pos-screen .cart-lines{max-height:270px}}

@@ -23,7 +23,7 @@ const routes:Routes=[
  @if(auth.token()&&!url().startsWith('/login')){
   <div class="app-layout">
    <aside class="sidebar">
-    <a class="brand brand-light" [routerLink]="auth.admin()?'/dashboard':'/pos'"><span class="brand-mark"><ps-icon name="box"/></span><span>PuntoStock<small>VENTAS E INVENTARIO</small></span></a>
+    <a class="brand brand-light sidebar-brand" [routerLink]="auth.admin()?'/dashboard':'/pos'" aria-label="PuntoStock, inicio"><img class="sidebar-logo" src="assets/puntostock-logo-tienda-v1.png" alt="PuntoStock" width="2068" height="760"><small>VENTAS E INVENTARIO</small></a>
     <div class="nav-label">ESPACIO DE TRABAJO</div>
     <nav class="side-nav" aria-label="Navegación principal">
      @if(auth.admin()){<a routerLink="/dashboard" routerLinkActive="active"><ps-icon name="grid"/> Resumen</a>}
@@ -35,7 +35,7 @@ const routes:Routes=[
    </aside>
    <div class="workspace">
     <header class="workspace-header"><div><span class="header-caption">TU NEGOCIO, BAJO CONTROL</span><strong>{{pageTitle()}}</strong></div><ps-user-menu/></header>
-    <main class="workspace-content"><router-outlet/></main>
+    <main class="workspace-content" [class.home-watermark]="url()==='/pos'||url()==='/dashboard'"><router-outlet/></main>
     <footer class="workspace-footer"><span>PuntoStock · Ventas e inventario</span><span>Hecho para simplificar tu operación</span></footer>
    </div>
   </div>
