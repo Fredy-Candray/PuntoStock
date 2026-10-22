@@ -13,6 +13,14 @@ if($existing){
 }
 $settings=Import-Clixml (Join-Path $root '.cache/local/secrets.clixml')
 function Plain($value){[Net.NetworkCredential]::new('', $value).Password}
+$mailSettingsPath=Join-Path $root '.cache/local/mail.clixml'
+if((Test-Path $mailSettingsPath) -and !$env:MAIL_USERNAME){
+ $mailSettings=Import-Clixml $mailSettingsPath
+ $env:MAIL_USERNAME=$mailSettings.Username
+ $env:MAIL_PASSWORD=Plain $mailSettings.Password
+ $env:APP_PUBLIC_URL=$mailSettings.PublicUrl
+ $env:RECOVERY_ENABLED='true'
+}
 $env:DB_URL="jdbc:sqlserver://localhost:$($settings.Port);databaseName=PuntoStock;encrypt=true;trustServerCertificate=true"
 $env:DB_USER=$settings.DbUser
 $env:DB_PASSWORD=Plain $settings.DbPassword
@@ -34,4 +42,4 @@ try {
  & mvn -B '-Dmaven.repo.local=../.cache/m2' '-Dspring-boot.run.jvmArguments=-Djdk.net.unixdomain.tmpdir=../.cache/local/no-unix-sockets' spring-boot:run
  if($LASTEXITCODE -ne 0){throw 'Falló el arranque de Spring Boot.'}
 }
-finally {Pop-Location; 'DB_PASSWORD','JWT_SECRET','BOOTSTRAP_PASSWORD' | ForEach-Object {Remove-Item "Env:$_" -ErrorAction SilentlyContinue}}
+finally {Pop-Location; 'DB_PASSWORD','JWT_SECRET','BOOTSTRAP_PASSWORD','MAIL_PASSWORD' | ForEach-Object {Remove-Item "Env:$_" -ErrorAction SilentlyContinue}}

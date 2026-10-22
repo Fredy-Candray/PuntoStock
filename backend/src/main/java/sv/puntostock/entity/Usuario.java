@@ -9,6 +9,10 @@ public class Usuario {
  @org.hibernate.annotations.Nationalized @Column(nullable=false,unique=true,length=80) public String username;
  @Column(name="password_hash",nullable=false,length=100) public String passwordHash;
  public boolean activo=true;
+ @Column(name="auth_version",nullable=false) public long authVersion=0;
+ @Column(name="recuperacion_hash",length=64) public String recuperacionHash;
+ @Column(name="recuperacion_expira") public LocalDateTime recuperacionExpira;
+ @Column(name="recuperacion_solicitada") public LocalDateTime recuperacionSolicitada;
  @org.hibernate.annotations.Nationalized @Column(length=160) public String nombre;
  @org.hibernate.annotations.Nationalized @Column(length=254) public String correo;
  @org.hibernate.annotations.Nationalized @Column(length=30) public String telefono;

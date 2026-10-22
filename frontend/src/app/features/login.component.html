@@ -1,8 +1,9 @@
 <div class="login-layout">
  <section class="login-brand" aria-label="PuntoStock, ventas e inventario">
-  <div class="brand brand-light"><img class="login-store-icon" src="assets/puntostock-icon-192.png" alt="" width="64" height="64"><span>PuntoStock<small>VENTAS E INVENTARIO</small></span></div>
+  <div class="brand brand-light"><img class="login-store-icon" src="assets/puntostock-icon-192.png" alt="" width="64" height="64"><span class="brand-copy"><span class="brand-name"><span class="brand-punto">Punto</span><span class="brand-stock">Stock</span></span><small>VENTAS E INVENTARIO</small></span></div>
   <div class="login-story">
-   <h1>Menos tareas.<br><span>Más control.</span></h1>
+   <h1>Tu negocio,<br><span>bien organizado.</span></h1>
+   <p class="login-business-types">Papelería, regalos y variedades.</p>
    <p>Vende, organiza tu inventario y conoce tus resultados desde un mismo lugar.</p>
    <div class="operation-visual" aria-hidden="true">
     <div class="visual-heading"><span class="visual-dot"></span> Cada operación cuenta</div>
@@ -13,27 +14,39 @@
     <div class="operation-step"><span class="operation-icon"><ps-icon name="chart"/></span><div><strong>Conoce tus ganancias</strong><small>Información para decidir mejor</small></div><ps-icon name="check"/></div>
    </div>
   </div>
-  <div class="brand-footer"><span class="tiny-box"></span> Una visión clara de tu negocio.</div>
  </section>
  <section class="login-access" aria-labelledby="login-title">
   <div class="login-form-wrap">
-   <div class="login-welcome-icon"><ps-icon name="lock"/></div>
-   <span class="overline">ACCESO A TU ESPACIO</span>
-   <h2 id="login-title">Bienvenido de nuevo</h2>
-   <p class="login-intro">Ingresa tus credenciales para continuar.</p>
+   <div class="login-store-heading"><img src="assets/puntostock-icon-192.png" alt="PuntoStock" width="96" height="96"></div>
+   <h2 id="login-title">{{recuperacion()==='solicitar'?'Recupera tu acceso':recuperacion()==='restablecer'?'Crea tu nueva contraseña':'Bienvenido de nuevo'}}</h2>
+   <p class="login-intro">{{recuperacion()==='solicitar'?'Ingresa tu usuario y el correo registrado en tu perfil.':recuperacion()==='restablecer'?'Elige una contraseña de al menos 12 caracteres.':'Ingresa tus credenciales para continuar.'}}</p>
+   @if(mensaje()){<div class="notice notice-info" role="status">{{mensaje()}}</div>}
+   @if(recuperacion()){
+    <form #recoveryForm="ngForm" (ngSubmit)="recuperar()" class="login-form">
+     @if(recuperacion()==='solicitar'){
+      <label for="recovery-user">Usuario</label><div class="input-with-icon"><ps-icon name="user"/><input id="recovery-user" name="recoveryUser" [(ngModel)]="username" required maxlength="80" autocomplete="username" [disabled]="busy()"></div>
+      <label for="recovery-email">Correo electrónico</label><div class="input-with-icon"><ps-icon name="user"/><input id="recovery-email" name="correo" type="email" email [(ngModel)]="correo" required maxlength="254" autocomplete="email" placeholder="El correo registrado en tu perfil" [disabled]="busy()"></div>
+     }@else{
+      <label for="new-password">Nueva contraseña</label><div class="input-with-icon"><ps-icon name="lock"/><input id="new-password" name="nuevaClave" type="password" [(ngModel)]="nuevaClave" required minlength="12" maxlength="72" autocomplete="new-password" [disabled]="busy()"></div>
+      <label for="confirm-password">Confirmar contraseña</label><div class="input-with-icon"><ps-icon name="lock"/><input id="confirm-password" name="confirmacion" type="password" [(ngModel)]="confirmacion" required minlength="12" maxlength="72" autocomplete="new-password" [disabled]="busy()"></div>
+     }
+     @if(error()){<div class="notice notice-error" role="alert">{{error()}}</div>}
+     <button class="btn btn-primary login-submit" type="submit" [disabled]="recoveryForm.invalid||busy()">{{busy()?'Procesando…':recuperacion()==='solicitar'?'Enviar enlace de recuperación':'Guardar nueva contraseña'}}</button>
+     <button class="btn btn-quiet" type="button" (click)="volver()" [disabled]="busy()">Volver al inicio de sesión</button>
+     @if(recuperacion()==='restablecer'){<button class="login-recovery-link" type="button" (click)="abrirRecuperacion()" [disabled]="busy()">Solicitar un nuevo enlace</button>}
+    </form>
+   }@else{
    <form #loginForm="ngForm" (ngSubmit)="entrar()" class="login-form">
     <label for="login-user">Usuario</label>
     <div class="input-with-icon"><ps-icon name="user"/><input id="login-user" name="usuario" [(ngModel)]="username" required autocomplete="username" placeholder="Tu nombre de usuario" [disabled]="busy()" autocapitalize="none" spellcheck="false"></div>
     <label for="login-password">Contraseña</label>
     <div class="input-with-icon"><ps-icon name="lock"/><input id="login-password" name="clave" [type]="visible()?'text':'password'" [(ngModel)]="password" required autocomplete="current-password" placeholder="Ingresa tu contraseña" [disabled]="busy()"><button class="password-toggle" type="button" (click)="visible.set(!visible())" [attr.aria-label]="visible()?'Ocultar contraseña':'Mostrar contraseña'" [attr.aria-pressed]="visible()"><ps-icon [name]="visible()?'eyeOff':'eye'"/></button></div>
-    <label class="remember-session"><input type="checkbox" name="rememberMe" [(ngModel)]="rememberMe" [disabled]="busy()" aria-describedby="remember-help"><span>Mantener sesión iniciada</span></label>
-    <p id="remember-help" class="remember-help">Conserva el acceso en este navegador hasta por 7 días.</p>
+    <div class="login-options"><label class="remember-session"><input type="checkbox" name="rememberMe" [(ngModel)]="rememberMe" [disabled]="busy()" title="Conserva el acceso en este navegador hasta por 7 días"><span>Mantener sesión iniciada</span></label><button class="login-recovery-link" type="button" (click)="abrirRecuperacion()" [disabled]="busy()">¿Olvidaste tu contraseña?</button></div>
     @if(error()){<div class="notice notice-error" role="alert"><ps-icon name="alert"/><span>{{error()}}</span></div>}
-    <button class="btn btn-primary login-submit" type="submit" [disabled]="loginForm.invalid||busy()">@if(busy()){<span class="spinner"></span> Ingresando…}@else{Ingresar a PuntoStock <ps-icon name="arrow"/>}</button>
+    <button class="btn btn-primary login-submit login-submit-compact" type="submit" [disabled]="loginForm.invalid||busy()">@if(busy()){<span class="spinner"></span> Ingresando…}@else{Iniciar sesión <ps-icon name="arrow"/>}</button>
    </form>
+   }
    <p class="access-help">¿Necesitas acceso? <strong>Solicítalo a tu administrador.</strong></p>
-   <div class="login-security"><ps-icon name="shield"/> Acceso protegido según tu rol</div>
   </div>
-  <footer class="login-footer">PuntoStock <span>Una operación más simple.</span></footer>
  </section>
 </div>

@@ -21,7 +21,7 @@ public class AuthController {
   var u=usuarios.findByUsername(in.username()).filter(x->x.activo).orElseThrow(()->new ResponseStatusException(UNAUTHORIZED,"Credenciales inválidas"));
   if(!passwords.matches(in.password(),u.passwordHash))throw new ResponseStatusException(UNAUTHORIZED,"Credenciales inválidas");
   long expiresIn=in.rememberMe()?604800:900;
-  var now=Instant.now();var claims=JwtClaimsSet.builder().issuer("puntostock").subject(u.username).issuedAt(now).expiresAt(now.plusSeconds(expiresIn)).build();
+  var now=Instant.now();var claims=JwtClaimsSet.builder().issuer("puntostock").subject(u.username).claim("authVersion",u.authVersion).issuedAt(now).expiresAt(now.plusSeconds(expiresIn)).build();
   var token=encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(),claims)).getTokenValue();
   return Map.of("accessToken",token,"expiresIn",expiresIn,"roles",u.roles.stream().map(r->r.nombre).toList());
  }

@@ -28,9 +28,11 @@ public class SecurityConfig {
  }
  @Bean SecurityFilterChain security(HttpSecurity http,UsuarioRepository usuarios)throws Exception{
   return http.csrf(c->c.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-   .authorizeHttpRequests(a->a.requestMatchers("/api/auth/login").permitAll().anyRequest().authenticated())
+   .authorizeHttpRequests(a->a.requestMatchers("/api/auth/login","/api/auth/recuperacion","/api/auth/restablecer").permitAll().anyRequest().authenticated())
    .oauth2ResourceServer(o->o.jwt(j->j.jwtAuthenticationConverter(jwt->{
     var u=usuarios.findByUsername(jwt.getSubject()).filter(x->x.activo).orElseThrow(()->new org.springframework.security.oauth2.core.OAuth2AuthenticationException("invalid_token"));
+    Number tokenVersion=jwt.getClaim("authVersion");
+    if((tokenVersion==null?0:tokenVersion.longValue())!=u.authVersion)throw new org.springframework.security.oauth2.core.OAuth2AuthenticationException("invalid_token");
     var authorities=u.roles.stream().map(r->new SimpleGrantedAuthority("ROLE_"+r.nombre)).toList();
     return new JwtAuthenticationToken(jwt,authorities,u.username);
    }))).build();

@@ -20,7 +20,7 @@ Requisitos: JDK 21, Maven >=3.6.3, Node 22.22.3+ o 24.15+ compatible con Angular
 Para alinear la instalación de Java en Windows, ejecuta `pwsh -NoProfile -File scripts/Set-Java21.ps1`. El parámetro `-SystemPath` requiere una terminal como administrador y prioriza JDK 21 en el PATH del sistema. Se conserva un respaldo local en `.cache/local`. Cierra y abre terminales e IDE después del cambio; `java -version`, `javac -version` y `mvn -version` deben mostrar Java 21. En IntelliJ selecciona el SDK `ms-21` del proyecto y ese mismo JDK para Maven. El archivo `.java-version` declara la versión mayor del proyecto.
 
 
-1. Crear una base vacía `PuntoStock` en SQL Server usando SSMS o `sqlcmd` y ejecutar, en orden, `database/001_schema.sql`, `database/002_password_hash_constraint.sql`, `database/003_user_profile.sql` y `database/004_retail_pos.sql`. La cuenta de la aplicación debe tener acceso DML, sin permisos DDL en producción. El DDL inicial se ejecuta una sola vez y dentro de una transacción. Las ampliaciones 002 a 004 se pueden volver a ejecutar.
+1. Crear una base vacía `PuntoStock` en SQL Server usando SSMS o `sqlcmd` y ejecutar, en orden, `database/001_schema.sql`, `database/002_password_hash_constraint.sql`, `database/003_user_profile.sql`, `database/004_retail_pos.sql` y `database/005_password_recovery.sql`. La cuenta de la aplicación debe tener acceso DML, sin permisos DDL en producción. El DDL inicial se ejecuta una sola vez y dentro de una transacción. Las ampliaciones 002 a 005 se pueden volver a ejecutar.
 2. Configurar las variables en la terminal del backend (sustituir los valores):
 
 ```powershell
@@ -64,7 +64,9 @@ Pruebas unitarias incluidas para cálculo histórico, stock insuficiente, línea
 
 Resultado de esta entrega: seis pruebas backend aprobadas con Java 21, 41 comprobaciones HTTP/SQL aprobadas y build Angular completado. Login y catálogo también se comprobaron a través del proxy Angular.
 
-No se implementan aún recuperación de contraseña, refresh tokens, paginación de catálogo, consulta de recibos, idempotencia de ventas, devoluciones financieras, cargas de archivos, protección de login por tasa ni observabilidad operativa. Antes de habilitar reintentos automáticos del cobro, implementar una clave de idempotencia única por venta. Sin ella, ante una respuesta perdida verificar el registro con un administrador antes de repetir la operación.
+La recuperación de contraseña por Gmail requiere aplicar `database/005_password_recovery.sql` y configurar el remitente con `scripts/Set-LocalMail.ps1`; consultar `docs/recuperacion-contrasena.md`. Sin esa configuración, el envío permanece desactivado. Los enlaces son de un solo uso, vencen en 15 minutos e invalidan las sesiones anteriores al restablecer la contraseña.
+
+No se implementan aún refresh tokens, paginación de catálogo, devoluciones financieras, protección de login por tasa ni observabilidad operativa. El POS incluye consulta de comprobantes e idempotencia por UUID; revisar `docs/arquitectura.md` para el contrato vigente.
 
 ## Versiones verificadas
 

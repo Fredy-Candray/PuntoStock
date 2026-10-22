@@ -47,6 +47,8 @@ En **Ventas**, el administrador consulta todas las ventas; el vendedor consulta 
 
 Los totales de efectivo representan ventas en efectivo, no el saldo de una caja con fondo inicial, retiros o gastos.
 
+El comprobante ofrece **Continuar**, **Descargar PDF** e **Imprimir comprobante**. La descarga está disponible al confirmar el cobro y al abrir una venta desde el historial. Genera `PuntoStock-V-000001.pdf` (con el número correspondiente) en el navegador, usando los datos de la venta registrada y sin volver a cobrar ni modificar inventario. Incluye cliente, vendedor, fecha de El Salvador, detalle, total, medio de pago, importe recibido, cambio y referencia cuando corresponda. Los comprobantes largos se dividen en páginas.
+
 ## Próximas funciones para una operación más completa
 
 - Apertura, movimientos y cierre de caja con conciliación del efectivo.

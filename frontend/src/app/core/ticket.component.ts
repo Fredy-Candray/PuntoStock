@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, Output, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { A11yModule } from '@angular/cdk/a11y';
 import { Ticket } from './api.service';
@@ -15,7 +15,8 @@ import { IconComponent } from './icon.component';
    <div class="receipt-payment"><p><span>Medio de pago</span><strong>{{medio()}}</strong></p>@if(ticket.recibido!==null){<p><span>{{ticket.metodoPago==='EFECTIVO'?'Recibido':'Pagado'}}</span><span>{{ticket.recibido|currency:'USD'}}</span></p>}@if(ticket.metodoPago==='EFECTIVO'&&ticket.cambio!==null){<p><span>Cambio</span><strong>{{ticket.cambio|currency:'USD'}}</strong></p>}@if(ticket.referenciaPago){<p><span>Referencia</span><span>{{ticket.referenciaPago}}</span></p>}</div>
    <footer>Gracias por su compra.<small>Comprobante de la operación registrada en PuntoStock.</small></footer>
   </article>
-  <div class="receipt-actions no-print"><button type="button" class="btn btn-secondary" (click)="cerrar.emit()">Continuar</button><button type="button" class="btn btn-primary" (click)="imprimir()"><ps-icon name="printer"/> Imprimir comprobante</button></div>
+  @if(errorDescarga()){<div class="notice notice-error no-print" role="alert">{{errorDescarga()}}</div>}
+  <div class="receipt-actions no-print"><button type="button" class="btn btn-secondary" (click)="cerrar.emit()">Continuar</button><button type="button" class="btn btn-secondary" (click)="descargar()" [disabled]="descargando()"><ps-icon name="arrowDown"/> {{descargando()?'Generando…':'Descargar PDF'}}</button><button type="button" class="btn btn-primary" (click)="imprimir()"><ps-icon name="printer"/> Imprimir comprobante</button></div>
  </section></div>
 `})
 export class TicketComponent {
@@ -23,5 +24,13 @@ export class TicketComponent {
  numero(){return 'V-'+String(this.ticket.id).padStart(6,'0');}
  medio(){return ({EFECTIVO:'Efectivo',TARJETA:'Tarjeta',TRANSFERENCIA:'Transferencia',SIN_REGISTRO:'No registrado'} as Record<string,string>)[this.ticket.metodoPago]||this.ticket.metodoPago;}
  imprimir(){window.print();}
+ descargando=signal(false);errorDescarga=signal('');
+ async descargar(){
+  if(this.descargando())return;
+  this.descargando.set(true);this.errorDescarga.set('');
+  try{const {crearComprobantePdf}=await import('./ticket-pdf');await crearComprobantePdf(this.ticket).save('PuntoStock-'+this.numero()+'.pdf',{returnPromise:true});}
+  catch{this.errorDescarga.set('No se pudo generar el PDF. Inténtalo de nuevo o utiliza Imprimir.');}
+  finally{this.descargando.set(false);}
+ }
  @HostListener('document:keydown.escape') escape(){this.cerrar.emit();}
 }
