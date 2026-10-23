@@ -6,30 +6,30 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { filter,map } from 'rxjs';
 import { IconComponent } from './app/core/icon.component';
 import { AuthService } from './app/core/api.service';
-import { authGuard,adminGuard,authInterceptor } from './app/core/security';
+import { authGuard,adminGuard,menuGuard,authInterceptor } from './app/core/security';
+import { MenuService } from './app/core/menu.service';
 import { ThemeToggleComponent } from './app/core/theme-toggle.component';
 import { UserMenuComponent } from './app/core/user-menu.component';
 const routes:Routes=[
  {path:'login',loadComponent:()=>import('./app/features/login.component').then(m=>m.LoginComponent)},
  {path:'perfil',canActivate:[authGuard],loadComponent:()=>import('./app/features/perfil.component').then(m=>m.PerfilComponent)},
- {path:'pos',canActivate:[authGuard],loadComponent:()=>import('./app/features/pos.component').then(m=>m.PosComponent)},
- {path:'ventas',canActivate:[authGuard],loadComponent:()=>import('./app/features/ventas.component').then(m=>m.VentasComponent)},
- {path:'dashboard',canActivate:[authGuard,adminGuard],loadComponent:()=>import('./app/features/dashboard.component').then(m=>m.DashboardComponent)},
- {path:'productos',canActivate:[authGuard,adminGuard],loadComponent:()=>import('./app/features/productos.component').then(m=>m.ProductosComponent)},
- {path:'inventario',canActivate:[authGuard,adminGuard],loadComponent:()=>import('./app/features/inventario.component').then(m=>m.InventarioComponent)},
+ {path:'pos',canActivate:[authGuard,menuGuard],loadComponent:()=>import('./app/features/pos.component').then(m=>m.PosComponent)},
+ {path:'ventas',canActivate:[authGuard,menuGuard],loadComponent:()=>import('./app/features/ventas.component').then(m=>m.VentasComponent)},
+ {path:'dashboard',canActivate:[authGuard,adminGuard,menuGuard],loadComponent:()=>import('./app/features/dashboard.component').then(m=>m.DashboardComponent)},
+ {path:'productos',canActivate:[authGuard,adminGuard,menuGuard],loadComponent:()=>import('./app/features/productos.component').then(m=>m.ProductosComponent)},
+ {path:'inventario',canActivate:[authGuard,adminGuard,menuGuard],loadComponent:()=>import('./app/features/inventario.component').then(m=>m.InventarioComponent)},
+ {path:'usuarios',canActivate:[authGuard,adminGuard,menuGuard],loadComponent:()=>import('./app/features/usuarios.component').then(m=>m.UsuariosComponent)},
+ {path:'administrar-menu',canActivate:[authGuard,adminGuard,menuGuard],loadComponent:()=>import('./app/features/administrar-menu.component').then(m=>m.AdministrarMenuComponent)},
  {path:'**',redirectTo:'pos'}
 ];
 @Component({selector:'app-root',standalone:true,imports:[RouterLink,RouterLinkActive,RouterOutlet,IconComponent,ThemeToggleComponent,UserMenuComponent],template:`
  @if(auth.token()&&!url().startsWith('/login')){
   <div class="app-layout">
    <aside class="sidebar">
-    <a class="brand brand-light sidebar-brand" [routerLink]="auth.admin()?'/dashboard':'/pos'" aria-label="PuntoStock, inicio"><img class="sidebar-store-icon" src="assets/puntostock-icon-192.png" alt="" width="48" height="48"><span class="brand-copy"><span class="brand-name"><span class="brand-punto">Punto</span><span class="brand-stock">Stock</span></span><small>VENTAS E INVENTARIO</small></span></a>
-    <div class="nav-label">ESPACIO DE TRABAJO</div>
+    <a class="brand brand-light sidebar-brand" [routerLink]="menu.inicio()" aria-label="PuntoStock, inicio"><img class="sidebar-store-icon" src="assets/puntostock-icon-192.png" alt="" width="48" height="48"><span class="brand-copy"><span class="brand-name"><span class="brand-punto">Punto</span><span class="brand-stock">Stock</span></span><small>VENTAS E INVENTARIO</small></span></a>
     <nav class="side-nav" aria-label="Navegación principal">
-     @if(auth.admin()){<a routerLink="/dashboard" routerLinkActive="active"><ps-icon name="grid"/> Resumen</a>}
-     <a routerLink="/pos" routerLinkActive="active"><ps-icon name="cart"/> Punto de venta</a>
-     <a routerLink="/ventas" routerLinkActive="active"><ps-icon name="receipt"/> Ventas</a>
-     @if(auth.admin()){<a routerLink="/productos" routerLinkActive="active"><ps-icon name="box"/> Productos</a><a routerLink="/inventario" routerLinkActive="active"><ps-icon name="history"/> Inventario</a>}
+     @for(s of menu.secciones();track s.id){<div class="nav-section"><div class="nav-label">{{s.titulo}}</div>@for(o of s.opciones;track o.id){<a [routerLink]="o.ruta" routerLinkActive="active"><ps-icon [name]="o.icono"/>{{o.etiqueta}}</a>}</div>}
+     @if(menu.error()){<button class="btn btn-quiet" (click)="recargarMenu()">Reintentar cargar menú</button>}
     </nav>
     <div class="sidebar-bottom"><div class="sidebar-theme"><ps-theme-toggle/></div></div>
    </aside>
@@ -42,9 +42,10 @@ const routes:Routes=[
  }@else{<div class="login-theme-toggle"><ps-theme-toggle/></div><router-outlet/>}
 `})
 class App {
- auth=inject(AuthService);router=inject(Router);
+ auth=inject(AuthService);router=inject(Router);menu=inject(MenuService);
  url=toSignal(this.router.events.pipe(filter((event):event is NavigationEnd=>event instanceof NavigationEnd),map(event=>event.urlAfterRedirects)),{initialValue:this.router.url});
- constructor(){effect(onCleanup=>{if(this.auth.token()){const sub=this.auth.cargarPerfil().subscribe({error:()=>{}});onCleanup(()=>sub.unsubscribe());}});}
- pageTitle(){return ({'/dashboard':'Resumen general','/pos':'Punto de venta','/ventas':'Historial de ventas','/productos':'Artículos y servicios','/inventario':'Control de inventario','/perfil':'Mi perfil'} as Record<string,string>)[this.url()]||'PuntoStock';}
+ constructor(){effect(onCleanup=>{if(this.auth.token()){const sub=this.auth.cargarPerfil().subscribe({error:()=>{}});const nav=this.menu.cargar().subscribe({error:()=>{}});onCleanup(()=>{sub.unsubscribe();nav.unsubscribe();});}else this.menu.limpiar();});}
+ recargarMenu(){this.menu.cargar().subscribe({error:()=>{}});}
+ pageTitle(){return this.menu.secciones().flatMap(s=>s.opciones).find(o=>o.ruta===this.url())?.etiqueta||({'/perfil':'Mi perfil'} as Record<string,string>)[this.url()]||'PuntoStock';}
 }
 bootstrapApplication(App,{providers:[provideHttpClient(withInterceptors([authInterceptor])),provideRouter(routes)]}).catch(console.error);

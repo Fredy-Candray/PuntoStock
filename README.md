@@ -48,7 +48,7 @@ npm start
 
 Abrir `http://localhost:4200`. El proxy de desarrollo envía `/api` al puerto 8080. Para producción servir Angular y `/api` bajo el mismo origen mediante proxy HTTPS. No se necesita CORS en este diseño.
 
-4. Entrar con el administrador inicial, crear productos, registrar entradas `COMPRA` y registrar una venta en POS. Revisar movimiento de salida y ganancia en Dashboard. La administración de usuarios tiene API; la pantalla de usuarios queda para una siguiente fase.
+4. Entrar con el administrador inicial, crear productos, registrar entradas `COMPRA` y registrar una venta en POS. Revisar movimiento de salida y ganancia en Dashboard. La sección Administración incluye Usuarios y Administrar menú; aplicar también `database/006_menu_administrable.sql`. Consultar `docs/administracion.md`.
 
 ## Seguridad y alcance
 

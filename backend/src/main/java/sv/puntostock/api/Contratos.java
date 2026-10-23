@@ -29,10 +29,15 @@ public final class Contratos {
  public record HistorialVentas(List<VentaResumen> ventas,long cantidad,int pagina,int paginas,BigDecimal total,
   BigDecimal efectivo,BigDecimal tarjeta,BigDecimal transferencia,BigDecimal sinRegistro) {}
  public record MovimientoInput(@NotNull @Positive Long productoId,@NotBlank String tipo,int cantidad,@NotBlank @Size(max=500) String motivo) {}
- public record Login(@NotBlank String username,@NotBlank String password,boolean rememberMe) {}
+ public record Login(@NotBlank String username,@NotBlank String password,Boolean rememberMe) {
+  public Login {rememberMe=Boolean.TRUE.equals(rememberMe);}
+ }
  public record PerfilInput(@NotBlank @Size(max=160) String nombre,@NotBlank @Email @Size(max=254) String correo,
   @Size(max=30) @Pattern(regexp="[+0-9 ()-]*") String telefono) {}
  public record FotoInput(@NotNull @Size(max=1_500_000) String imagen) {}
- public record UsuarioInput(@NotBlank @Size(max=80) String username,@NotBlank @Size(min=12,max=72) String password,
-  @Pattern(regexp="ADMIN|VENDEDOR") @NotNull String rol) {}
+ public record UsuarioInput(@NotBlank @Size(max=80) String username,@Size(max=72) String password,
+  @Pattern(regexp="ADMIN|VENDEDOR") @NotNull String rol,@Size(max=160) String nombre,
+  @Email @Size(max=254) String correo,@Size(max=30) @Pattern(regexp="[+0-9 ()-]*") String telefono,Boolean activo) {
+  public UsuarioInput(String username,String password,String rol){this(username,password,rol,null,null,null,true);}
+ }
 }

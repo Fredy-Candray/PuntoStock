@@ -35,6 +35,14 @@ class AuthControllerTest {
   assertEquals(segundos,Duration.between(claims.getIssuedAt(),claims.getExpiresAt()).getSeconds());
  }
  @Test void sesionNormalDuraQuinceMinutos(){comprobarDuracion(false,900);}
+ @Test void loginSinRememberMeMantieneCompatibilidad(){
+  preparar();var in=new tools.jackson.databind.ObjectMapper().readValue("{\"username\":\"test\",\"password\":\"test-password\"}",Contratos.Login.class);
+  assertFalse(in.rememberMe());assertEquals(900L,controller.login(in).get("expiresIn"));
+ }
+ @Test void rememberMeNuloEquivaleASesionNormal(){
+  var in=new tools.jackson.databind.ObjectMapper().readValue("{\"username\":\"test\",\"password\":\"test-password\",\"rememberMe\":null}",Contratos.Login.class);
+  assertFalse(in.rememberMe());
+ }
  @Test void sesionRecordadaDuraSieteDias(){comprobarDuracion(true,604800);}
  @Test void recordarNoPermiteIngresarSinCredencialesValidas(){
   preparar();when(passwords.matches("test-password","hash")).thenReturn(false);

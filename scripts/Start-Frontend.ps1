@@ -24,5 +24,5 @@ New-Item -ItemType Directory -Force $localDir | Out-Null
 $proxy=Join-Path $root '.cache/local/proxy.json'
 @{'/api'=@{target="http://127.0.0.1:$ApiPort";secure=$false;changeOrigin=$true}} | ConvertTo-Json -Depth 3 | Set-Content $proxy -Encoding utf8
 Push-Location (Join-Path $root 'frontend')
-try { & $NodeExecutable node_modules/@angular/cli/bin/ng.js serve --host 127.0.0.1 --port $Port --proxy-config $proxy; if($LASTEXITCODE -ne 0){throw 'Falló el arranque de Angular.'} }
+try { & $NodeExecutable node_modules/@angular/cli/bin/ng.js serve --host 127.0.0.1 --port $Port --proxy-config $proxy --poll 2000; if($LASTEXITCODE -ne 0){throw 'Falló el arranque de Angular.'} }
 finally {Pop-Location}

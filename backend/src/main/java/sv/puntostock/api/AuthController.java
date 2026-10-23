@@ -25,16 +25,4 @@ public class AuthController {
   var token=encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(),claims)).getTokenValue();
   return Map.of("accessToken",token,"expiresIn",expiresIn,"roles",u.roles.stream().map(r->r.nombre).toList());
  }
- @GetMapping("/usuarios") @PreAuthorize("hasRole('ADMIN')") public List<Map<String,Object>> listar(){return usuarios.findAll().stream().map(u->Map.<String,Object>of("id",u.id,"username",u.username,"activo",u.activo,"roles",u.roles.stream().map(r->r.nombre).toList())).toList();}
- @PostMapping("/usuarios") @PreAuthorize("hasRole('ADMIN')") @Transactional
- public Map<String,Long> crear(@Valid @RequestBody UsuarioInput in){
-  if(usuarios.findByUsername(in.username()).isPresent())throw new ResponseStatusException(CONFLICT,"Usuario existente");
-  if(in.password().getBytes(java.nio.charset.StandardCharsets.UTF_8).length>72)throw new ResponseStatusException(BAD_REQUEST,"Contraseña excede 72 bytes");
-  var u=new Usuario();u.username=in.username();u.passwordHash=passwords.encode(in.password());u.roles.add(roles.findByNombre(in.rol()).orElseThrow());return Map.of("id",usuarios.save(u).id);
- }
- @PutMapping("/usuarios/{id}/activo") @PreAuthorize("hasRole('ADMIN')") @Transactional
- public void activo(@PathVariable Long id,@RequestParam boolean valor,java.security.Principal actor){
-  var u=usuarios.findById(id).orElseThrow(()->new ResponseStatusException(NOT_FOUND));
-  if(u.username.equals(actor.getName())&&!valor)throw new ResponseStatusException(CONFLICT,"No puede desactivar su propia cuenta");u.activo=valor;
- }
 }
