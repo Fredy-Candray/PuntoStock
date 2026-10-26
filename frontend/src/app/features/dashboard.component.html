@@ -1,16 +1,190 @@
-<div class="page-heading"><div><span class="overline">PANORAMA DEL NEGOCIO</span><h1 style="margin-top:8px">Una visión clara de tu operación.</h1><p>Revisa tus resultados y el estado actual de tu inventario.</p></div><div class="page-actions"><label class="date-filter"><ps-icon name="calendar"/><input aria-label="Fecha del reporte de ganancias" type="date" [(ngModel)]="fecha" (change)="cargar()" [disabled]="loading()"></label><button class="icon-btn" (click)="cargar()" [disabled]="loading()" aria-label="Actualizar resumen"><ps-icon name="refresh"/></button></div></div>
-@if(error()){<div class="notice notice-error" role="alert"><ps-icon name="alert"/>{{error()}}</div>}
-@if(loading()){<div class="loading-line" role="status"><span class="spinner"></span> Preparando tu resumen…</div>}
-@else if(!error()){
- <div class="summary-grid">
-  <div class="summary-card"><span class="summary-icon"><ps-icon name="box"/></span><div><small>Artículos y servicios</small><strong>{{productos().length}}</strong></div></div>
-  <div class="summary-card"><span class="summary-icon"><ps-icon name="grid"/></span><div><small>Unidades disponibles</small><strong>{{unidades()}}</strong></div></div>
-  <div class="summary-card"><span class="summary-icon summary-icon-warning"><ps-icon name="alert"/></span><div><small>Artículos por reponer</small><strong>{{bajoStock().length}}</strong></div></div>
- </div>
- <div class="dashboard-columns"><section class="profit-panel"><span class="overline">GANANCIA BRUTA · {{fecha}}</span><div class="profit-number">{{ganancia()|currency:'USD'}}</div><p>El resultado de tus ventas, calculado con los precios y costos de cada operación.</p><div class="profit-note">Día seleccionado en horario de El Salvador. No incluye gastos ni impuestos.</div></section>
-  <section class="panel"><div class="panel-heading"><h2>Continúa con tu operación</h2></div><div class="panel-body quick-actions"><a class="quick-action" routerLink="/pos"><ps-icon name="cart"/><div><strong>Registrar una venta</strong><small>Abre el punto de venta y prepara un cobro.</small></div><ps-icon name="arrow"/></a><a class="quick-action" routerLink="/inventario"><ps-icon name="history"/><div><strong>Actualizar inventario</strong><small>Registra una entrada, salida o ajuste.</small></div><ps-icon name="arrow"/></a></div></section>
- </div>
- <div class="dashboard-columns"><section class="panel"><div class="panel-heading"><div><h2>Actividad reciente</h2><p>Los últimos movimientos registrados.</p></div><a class="btn btn-quiet btn-small" routerLink="/inventario">Ver historial <ps-icon name="arrow"/></a></div><div class="table-scroll"><table><thead><tr><th>Producto</th><th>Movimiento</th><th>Cantidad</th></tr></thead><tbody>@for(m of movimientos().slice(0,5);track m.id){<tr><td><div class="cell-primary"><div><strong>{{nombreProducto(m.productoId)}}</strong><small>{{m.motivo}}</small></div></div></td><td><span class="movement-label">{{m.tipo.replaceAll('_',' ')}}</span></td><td [class.quantity-in]="m.cantidad>0" [class.quantity-out]="m.cantidad<0">{{m.cantidad>0?'+':''}}{{m.cantidad}}</td></tr>}@empty{<tr><td colspan="3"><div class="empty-state"><ps-icon name="history"/><h3>Aún no hay actividad</h3><p>Los movimientos aparecerán aquí cuando comiences a operar.</p></div></td></tr>}</tbody></table></div></section>
-  <section class="panel"><div class="panel-heading"><div><h2>Atención al inventario</h2><p>Artículos que alcanzaron su stock mínimo.</p></div><ps-icon name="box"/></div><div class="table-scroll"><table><thead><tr><th>Producto</th><th>Disponibles</th></tr></thead><tbody>@for(p of bajoStock().slice(0,5);track p.id){<tr><td><div class="cell-primary"><div><strong>{{p.nombre}}</strong><small>{{p.sku}}</small></div></div></td><td><span class="stock-tag" [class.low]="p.stock>0" [class.empty]="p.stock===0">{{p.stock}} uds.</span></td></tr>}@empty{<tr><td colspan="2"><div class="empty-state"><ps-icon name="check"/><h3>Sin alertas de stock</h3><p>Los productos de tu catálogo superan el mínimo de referencia.</p></div></td></tr>}</tbody></table></div><div class="panel-footer">El inventario muestra el estado actual, sin depender de la fecha seleccionada.</div></section>
- </div>
+<div class="page-heading">
+  <div>
+    <span class="overline">PANORAMA DEL NEGOCIO</span>
+    <h1 style="margin-top: 8px">Una visión clara de tu operación.</h1>
+    <p>Revisa tus resultados y el estado actual de tu inventario.</p>
+  </div>
+  <div class="page-actions">
+    <label class="date-filter"
+      ><ps-icon name="calendar" /><input
+        aria-label="Fecha del reporte de ganancias"
+        type="date"
+        [(ngModel)]="fecha"
+        (change)="cargar()"
+        [disabled]="loading()" /></label
+    ><button
+      class="icon-btn"
+      (click)="cargar()"
+      [disabled]="loading()"
+      aria-label="Actualizar resumen"
+    >
+      <ps-icon name="refresh" />
+    </button>
+  </div>
+</div>
+@if (error()) {
+  <div class="notice notice-error" role="alert"><ps-icon name="alert" />{{ error() }}</div>
 }
+@if (loading()) {
+  <div class="loading-line" role="status"><span class="spinner"></span> Preparando tu resumen…</div>
+} @else if (!error()) {
+  <div class="summary-grid">
+    <div class="summary-card">
+      <span class="summary-icon"><ps-icon name="box" /></span>
+      <div>
+        <small>Artículos y servicios</small><strong>{{ productos().length }}</strong>
+      </div>
+    </div>
+    <div class="summary-card">
+      <span class="summary-icon"><ps-icon name="grid" /></span>
+      <div>
+        <small>Unidades disponibles</small><strong>{{ unidades() }}</strong>
+      </div>
+    </div>
+    <div class="summary-card">
+      <span class="summary-icon summary-icon-warning"><ps-icon name="alert" /></span>
+      <div>
+        <small>Artículos por reponer</small><strong>{{ bajoStock().length }}</strong>
+      </div>
+    </div>
+  </div>
+  <div class="dashboard-columns">
+    <section class="profit-panel">
+      <span class="overline">GANANCIA BRUTA · {{ fecha }}</span>
+      <div class="profit-number">{{ ganancia() | currency: 'USD' }}</div>
+      <p>El resultado de tus ventas, calculado con los precios y costos de cada operación.</p>
+      <div class="profit-note">
+        Día seleccionado en horario de El Salvador. No incluye gastos ni impuestos.
+      </div>
+    </section>
+    <section class="panel">
+      <div class="panel-heading"><h2>Continúa con tu operación</h2></div>
+      <div class="panel-body quick-actions">
+        <a class="quick-action" routerLink="/pos"
+          ><ps-icon name="cart" />
+          <div>
+            <strong>Registrar una venta</strong
+            ><small>Abre el punto de venta y prepara un cobro.</small>
+          </div>
+          <ps-icon name="arrow" /></a
+        ><a class="quick-action" routerLink="/inventario"
+          ><ps-icon name="history" />
+          <div>
+            <strong>Actualizar inventario</strong
+            ><small>Registra una entrada, salida o ajuste.</small>
+          </div>
+          <ps-icon name="arrow"
+        /></a>
+      </div>
+    </section>
+  </div>
+  <div class="dashboard-columns">
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Actividad reciente</h2>
+          <p>Los últimos movimientos registrados.</p>
+        </div>
+        <a class="btn btn-quiet btn-small" routerLink="/inventario"
+          >Ver historial <ps-icon name="arrow"
+        /></a>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Movimiento</th>
+              <th>Cantidad</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of movimientos().slice(0, 5); track m.id) {
+              <tr>
+                <td>
+                  <div class="cell-primary">
+                    <div>
+                      <strong>{{ nombreProducto(m.productoId) }}</strong
+                      ><small>{{ m.motivo }}</small>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="movement-label">{{ m.tipo.replaceAll('_', ' ') }}</span>
+                </td>
+                <td [class.quantity-in]="m.cantidad > 0" [class.quantity-out]="m.cantidad < 0">
+                  {{ m.cantidad > 0 ? '+' : '' }}{{ m.cantidad }}
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="3">
+                  <div class="empty-state">
+                    <ps-icon name="history" />
+                    <h3>Aún no hay actividad</h3>
+                    <p>Los movimientos aparecerán aquí cuando comiences a operar.</p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Atención al inventario</h2>
+          <p>Artículos que alcanzaron su stock mínimo.</p>
+        </div>
+        <ps-icon name="box" />
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Disponibles</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of bajoStock().slice(0, 5); track p.id) {
+              <tr>
+                <td>
+                  <div class="cell-primary">
+                    <div>
+                      <strong>{{ p.nombre }}</strong
+                      ><small>{{ p.sku }}</small>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="stock-tag" [class.low]="p.stock > 0" [class.empty]="p.stock === 0"
+                    >{{ p.stock }} uds.</span
+                  >
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="2">
+                  <div class="empty-state">
+                    <ps-icon name="check" />
+                    <h3>Sin alertas de stock</h3>
+                    <p>Los productos de tu catálogo superan el mínimo de referencia.</p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="panel-footer">
+        El inventario muestra el estado actual, sin depender de la fecha seleccionada.
+      </div>
+    </section>
+  </div>
+}
+
+<p class="field-help">
+  Ganancia bruta: precio vendido menos costo histórico. No incluye gastos, impuestos ni reembolsos.
+</p>

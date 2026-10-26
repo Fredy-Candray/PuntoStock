@@ -2,7 +2,7 @@ param([string]$NodeExecutable='node',[int]$Port=14200,[int]$ApiPort=18080)
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 try {
- $existing=Invoke-WebRequest "http://127.0.0.1:$Port/" -SkipHttpErrorCheck -TimeoutSec 3
+ $existing=Invoke-WebRequest "http://127.0.0.1:$Port/" -UseBasicParsing -TimeoutSec 3
 } catch {$existing=$null}
 if($existing){
  if($existing.StatusCode -eq 200 -and $existing.Content -match '<title>PuntoStock</title>'){
@@ -22,7 +22,8 @@ Write-Output "PuntoStock usará Node $nodeVersion en http://127.0.0.1:$Port/"
 $localDir=Join-Path $root '.cache/local'
 New-Item -ItemType Directory -Force $localDir | Out-Null
 $proxy=Join-Path $root '.cache/local/proxy.json'
-@{'/api'=@{target="http://127.0.0.1:$ApiPort";secure=$false;changeOrigin=$true}} | ConvertTo-Json -Depth 3 | Set-Content $proxy -Encoding utf8
+$proxyJson=@{'/api'=@{target="http://127.0.0.1:$ApiPort";secure=$false;changeOrigin=$true}} | ConvertTo-Json -Depth 3
+[IO.File]::WriteAllText($proxy,$proxyJson,[Text.UTF8Encoding]::new($false))
 Push-Location (Join-Path $root 'frontend')
 try { & $NodeExecutable node_modules/@angular/cli/bin/ng.js serve --host 127.0.0.1 --port $Port --proxy-config $proxy --poll 2000; if($LASTEXITCODE -ne 0){throw 'Falló el arranque de Angular.'} }
 finally {Pop-Location}

@@ -2,8 +2,12 @@
   <modelVersion>4.0.0</modelVersion>
   <parent><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-parent</artifactId><version>4.1.1</version><relativePath/></parent>
   <groupId>sv.puntostock</groupId><artifactId>backend</artifactId><version>0.1.0-SNAPSHOT</version>
-  <properties><java.version>21</java.version></properties>
+  <properties><java.version>21</java.version><puntostock.build-dir>target</puntostock.build-dir></properties>
   <dependencies>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-flyway</artifactId></dependency>
+    <dependency><groupId>org.flywaydb</groupId><artifactId>flyway-sqlserver</artifactId></dependency>
+    <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-actuator</artifactId></dependency>
+
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-mail</artifactId></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webmvc</artifactId></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-data-jpa</artifactId></dependency>
@@ -13,5 +17,10 @@
     <dependency><groupId>com.microsoft.sqlserver</groupId><artifactId>mssql-jdbc</artifactId><scope>runtime</scope></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
   </dependencies>
-  <build><plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin></plugins></build>
+  <build><directory>${puntostock.build-dir}</directory><plugins>
+    <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-failsafe-plugin</artifactId><executions><execution><goals><goal>integration-test</goal><goal>verify</goal></goals></execution></executions></plugin>
+    <plugin><groupId>org.jacoco</groupId><artifactId>jacoco-maven-plugin</artifactId><version>0.8.14</version><executions><execution><goals><goal>prepare-agent</goal></goals></execution><execution><id>report</id><phase>verify</phase><goals><goal>report</goal></goals></execution><execution><id>critical-coverage</id><phase>verify</phase><goals><goal>check</goal></goals><configuration><rules><rule><element>CLASS</element><includes><include>*VentaService</include><include>*RecuperacionService</include></includes><limits><limit><counter>LINE</counter><value>COVEREDRATIO</value><minimum>0.75</minimum></limit></limits></rule></rules></configuration></execution></executions></plugin>
+    <plugin><groupId>com.diffplug.spotless</groupId><artifactId>spotless-maven-plugin</artifactId><version>3.0.0</version><configuration><java><googleJavaFormat><version>1.28.0</version></googleJavaFormat></java></configuration></plugin>
+    <plugin><groupId>org.flywaydb</groupId><artifactId>flyway-maven-plugin</artifactId><version>${flyway.version}</version><dependencies><dependency><groupId>org.flywaydb</groupId><artifactId>flyway-sqlserver</artifactId><version>${flyway.version}</version></dependency><dependency><groupId>com.microsoft.sqlserver</groupId><artifactId>mssql-jdbc</artifactId><version>${mssql-jdbc.version}</version></dependency></dependencies></plugin>
+<plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin></plugins></build>
 </project>

@@ -1,0 +1,34 @@
+services:
+  sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: Y
+      MSSQL_SA_PASSWORD: ${SQL_SA_PASSWORD:?Configura SQL_SA_PASSWORD fuera de Git}
+    volumes: [sql-data:/var/opt/mssql]
+    healthcheck:
+      test: [CMD-SHELL, '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "SELECT 1" -b']
+      interval: 10s
+      retries: 30
+  api:
+    build: backend
+    depends_on:
+      sql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:sqlserver://sql:1433;databaseName=PuntoStock;encrypt=true;trustServerCertificate=true
+      DB_USER: ${DB_USER:?Configura el usuario SQL de aplicación}
+      DB_PASSWORD: ${DB_PASSWORD:?Configura la contraseña SQL}
+      JWT_SECRET: ${JWT_SECRET:?Configura JWT_SECRET de al menos 32 bytes}
+      BOOTSTRAP_USER: ${BOOTSTRAP_USER:-}
+      BOOTSTRAP_PASSWORD: ${BOOTSTRAP_PASSWORD:-}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      RECOVERY_ENABLED: ${RECOVERY_ENABLED:-false}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:?Configura la URL HTTPS pública}
+  web:
+    build: frontend
+    depends_on: [api]
+    ports: ['127.0.0.1:8080:8080']
+volumes:
+  sql-data:

@@ -1,0 +1,7 @@
+app:
+  session:
+    secure: false
+management:
+  endpoint:
+    health:
+      show-details: never

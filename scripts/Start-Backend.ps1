@@ -2,8 +2,11 @@ param([int]$Port=18080)
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 try {
- $existing=Invoke-WebRequest "http://127.0.0.1:$Port/api/productos" -SkipHttpErrorCheck -TimeoutSec 3
-} catch {$existing=$null}
+ $existing=Invoke-WebRequest "http://127.0.0.1:$Port/api/productos" -UseBasicParsing -TimeoutSec 3
+} catch {
+ if($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -eq 401){Write-Output "La API ya responde en http://127.0.0.1:$Port/api. No se inició una segunda instancia.";return}
+ $existing=$null
+}
 if($existing){
  if($existing.StatusCode -in @(200,401)){
   Write-Output "La API ya responde en http://127.0.0.1:$Port/api (HTTP $($existing.StatusCode)). No se inició una segunda instancia."
@@ -27,6 +30,8 @@ $env:DB_PASSWORD=Plain $settings.DbPassword
 $env:JWT_SECRET=Plain $settings.JwtSecret
 $env:BOOTSTRAP_USER=$settings.AdminUser
 $env:BOOTSTRAP_PASSWORD=Plain $settings.AdminPassword
+$env:SESSION_SECURE='false'
+$env:SPRING_PROFILES_ACTIVE='local'
 $env:SERVER_ADDRESS='127.0.0.1'
 $env:SERVER_PORT="$Port"
 $jdk=Get-ChildItem (Join-Path $env:USERPROFILE '.jdks') -Directory -ErrorAction SilentlyContinue | Where-Object Name -Match '(^|-)21\.' | Select-Object -First 1
@@ -35,11 +40,14 @@ $env:JAVA_HOME=$jdk.FullName
 $javaExecutable=Join-Path $jdk.FullName 'bin/java.exe'
 if(!(Test-Path $javaExecutable)){throw 'El JDK 21 seleccionado no contiene bin/java.exe.'}
 Write-Output "PuntoStock usará JDK 21: $($jdk.FullName)"
+$localBuild=[IO.Path]::GetFullPath((Join-Path $root '.cache/backend-local'))
+if($localBuild -ne ($root.TrimEnd('\')+'\.cache\backend-local')){throw 'Directorio de compilación fuera del proyecto.'}
 Push-Location (Join-Path $root 'backend')
 try {
  # En este Windows el socket AF_UNIX interno del JDK falla al conectar.
  # Una ruta sin directorio provoca el fallback TCP previsto por PipeImpl.
- & mvn -B '-Dmaven.repo.local=../.cache/m2' '-Dspring-boot.run.jvmArguments=-Djdk.net.unixdomain.tmpdir=../.cache/local/no-unix-sockets' spring-boot:run
+ # Limpia las clases generadas para no cargar controladores retirados al actualizar.
+ & mvn -B '-Dmaven.repo.local=../.cache/m2' '-Dpuntostock.build-dir=../.cache/backend-local' '-Dspring-boot.run.jvmArguments=-Djdk.net.unixdomain.tmpdir=../.cache/local/no-unix-sockets' clean spring-boot:run
  if($LASTEXITCODE -ne 0){throw 'Falló el arranque de Spring Boot.'}
 }
 finally {Pop-Location; 'DB_PASSWORD','JWT_SECRET','BOOTSTRAP_PASSWORD','MAIL_PASSWORD' | ForEach-Object {Remove-Item "Env:$_" -ErrorAction SilentlyContinue}}

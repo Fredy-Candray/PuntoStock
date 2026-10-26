@@ -1,5 +1,6 @@
-param([string]$BaseUrl='http://127.0.0.1:18080/api')
+param([string]$BaseUrl='http://127.0.0.1:18080/api',[switch]$PermitirDatosReales)
 $ErrorActionPreference='Stop'
+if(!$PermitirDatosReales){& (Join-Path $PSScriptRoot 'Test-SqlIntegration.ps1');return}
 $root=Split-Path $PSScriptRoot -Parent
 $settings=Import-Clixml (Join-Path $root '.cache/local/secrets.clixml')
 function Plain($value){[Net.NetworkCredential]::new('', $value).Password}
@@ -7,7 +8,8 @@ $checks=[Collections.Generic.List[string]]::new()
 function Check([bool]$ok,[string]$label){if(!$ok){throw "FALLÓ: $label"};$checks.Add($label);Write-Output "OK: $label"}
 function Request([string]$method,[string]$route,$body=$null,[string]$token=''){
  $requestOptions=@{Uri="$BaseUrl$route";Method=$method;SkipHttpErrorCheck=$true;ContentType='application/json';TimeoutSec=30}
- if($token){$requestOptions.Headers=@{Authorization="Bearer $token"}}
+ $requestOptions.Headers=@{'X-PuntoStock'='1'}
+ if($token){$requestOptions.Headers.Authorization="Bearer $token"}
  if($null -ne $body){$requestOptions.Body=ConvertTo-Json -InputObject $body -Depth 10 -Compress}
  $response=Invoke-WebRequest @requestOptions
  $data=if($response.Content){try{ConvertFrom-Json $response.Content}catch{$null}}else{$null}

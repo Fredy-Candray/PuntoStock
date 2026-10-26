@@ -31,7 +31,7 @@ $env:RECOVERY_ENABLED = 'true'
 
 Estas variables pertenecen solo a esta terminal y sus procesos hijos. Al cerrar el proceso, volver a configurarlas para otro arranque. `APP_PUBLIC_URL` debe ser la dirección de confianza del frontend que usarán los destinatarios; loopback funciona únicamente si abren el enlace en el mismo equipo del sistema. Para un despliegue accesible desde otros equipos, configurar su URL HTTPS real. No se toma esta URL de cabeceras o parámetros enviados por un visitante.
 
-Sin remitente o sin configuración habilitada, el formulario informa que la recuperación no está disponible. Si Gmail rechaza la conexión, se muestra un error y se revierte la solicitud. No se simulan envíos exitosos ni se imprimen enlaces o tokens en logs.
+Sin remitente o sin configuración habilitada, el formulario informa que la recuperación no está disponible. Con la configuración activa, la solicitud y el correo pendiente se confirman juntos en la base. Un trabajador envía después mediante SMTP, fuera de la transacción del usuario, y reintenta hasta cinco veces. El 200 del formulario confirma el procesamiento, no la entrega. Las solicitudes reemplazadas, vencidas o canceladas no se envían; el contenido cifrado se elimina al finalizar. No se imprimen enlaces ni tokens en logs. Consultar `docs/estabilidad.md` para estados, límites y diagnóstico.
 
 ## Verificación pendiente con la cuenta real
 

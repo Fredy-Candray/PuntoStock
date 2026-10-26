@@ -1,35 +1,321 @@
 <div class="pos-screen no-print">
- @if(mensaje()){<div class="notice" [class.notice-error]="messageError()" [class.notice-info]="!messageError()" role="status"><ps-icon [name]="messageError()?'alert':'check'"/><span>{{mensaje()}}</span></div>}
- @if(pendiente()){<div class="notice notice-warning"><ps-icon name="alert"/><div><strong>Venta pendiente de confirmación</strong><p class="pending-help">El carrito se conserva para no registrar dos ventas por el mismo cobro.</p><button class="btn btn-secondary btn-small" type="button" (click)="recuperar()" [disabled]="busy()">Consultar estado</button></div></div>}
- <div class="page-heading pos-heading"><div><span class="overline">PUNTO DE VENTA</span><h1 style="margin-top:8px">Tu papelería, lista para vender.</h1></div>
-   <div class="page-actions pos-actions"><a class="btn btn-secondary" routerLink="/ventas"><ps-icon name="receipt"/> Ver ventas</a><button class="btn btn-quiet" (click)="cargar()" [disabled]="loading()||bloqueado()"><ps-icon name="refresh"/> Actualizar</button></div>
- </div>
- <div class="pos-layout">
-  <div class="pos-catalog">
-  <section class="panel"><div class="panel-heading"><div><h2>Artículos y servicios</h2><p>Los servicios se cobran por cantidad, sin exigir stock.</p></div><span class="count-label">{{productos().length}} disponibles</span></div>
-   <div class="pos-filters"><div class="search-field"><ps-icon name="search"/><input #buscador aria-label="Buscar o escanear código" placeholder="Escanea un código y presiona Enter, o busca por nombre…" [(ngModel)]="buscar" (keydown.enter)="agregarCodigo($event)" [disabled]="bloqueado()" autocomplete="off"></div><div class="pos-filter-row"><select aria-label="Tipo de catálogo" [(ngModel)]="tipo"><option value="TODOS">Artículos y servicios</option><option value="PRODUCTO">Artículos</option><option value="SERVICIO">Servicios</option></select><select aria-label="Categoría del catálogo" [(ngModel)]="categoria"><option value="">Todas las categorías</option>@for(c of categorias();track c){<option [value]="c">{{c}}</option>}</select></div></div>
-   @if(loading()){<div class="loading-line" role="status"><span class="spinner"></span> Cargando catálogo…</div>}
-   @else{<div class="table-scroll"><table class="pos-table"><thead><tr><th>Artículo / servicio</th><th>Disponible</th><th>Precio</th><th class="text-right">Acción</th></tr></thead><tbody>
-    @for(p of filtrados();track p.id){<tr><td><div class="cell-primary"><span class="product-symbol"><ps-icon [name]="servicio(p)?'printer':'box'"/></span><div><strong>{{p.nombre}}</strong><small>{{p.sku}} · {{p.categoria}}@if(p.ubicacion){ · {{p.ubicacion}}}</small></div></div></td><td>@if(servicio(p)){<span class="service-tag">Servicio</span>}@else{<span class="stock-tag" [class.low]="p.stock>0&&p.stock<=p.stockMinimo" [class.empty]="p.stock===0">{{p.stock}}</span>}</td><td><strong>{{p.precioVenta|currency:'USD'}}</strong><small class="price-unit">por {{unidad(p)}}</small></td><td class="text-right"><button class="btn btn-quiet btn-small" [disabled]="bloqueado()||(!servicio(p)&&p.stock===0)||p.precioVenta<=0" (click)="agregar(p)" [attr.aria-label]="'Agregar '+p.nombre"><ps-icon name="plus"/> Agregar</button></td></tr>}
-    @empty{<tr><td colspan="4"><div class="empty-state"><ps-icon name="search"/><h3>No hay coincidencias</h3><p>Prueba otro nombre, código o categoría.</p></div></td></tr>}
-   </tbody></table></div>}
-   <div class="panel-footer">El lector de códigos funciona como teclado: coloca el cursor en la búsqueda y escanea.</div>
-  </section>
+  @if (mensaje()) {
+    <div
+      class="notice"
+      [class.notice-error]="messageError()"
+      [class.notice-info]="!messageError()"
+      role="status"
+    >
+      <ps-icon [name]="messageError() ? 'alert' : 'check'" /><span>{{ mensaje() }}</span>
+    </div>
+  }
+  @if (pendiente()) {
+    <div class="notice notice-warning">
+      <ps-icon name="alert" />
+      <div>
+        <strong>Venta pendiente de confirmación</strong>
+        <p class="pending-help">
+          El carrito se conserva para no registrar dos ventas por el mismo cobro.
+        </p>
+        <button
+          class="btn btn-secondary btn-small"
+          type="button"
+          (click)="recuperar()"
+          [disabled]="busy()"
+        >
+          Consultar estado
+        </button>
+      </div>
+    </div>
+  }
+  <div class="page-heading pos-heading">
+    <div>
+      <span class="overline">PUNTO DE VENTA</span>
+      <h1 style="margin-top: 8px">Tu papelería, lista para vender.</h1>
+    </div>
+    <div class="page-actions pos-actions">
+      <a class="btn btn-secondary" routerLink="/ventas"><ps-icon name="receipt" /> Ver ventas</a
+      ><button class="btn btn-quiet" (click)="cargar()" [disabled]="loading() || bloqueado()">
+        <ps-icon name="refresh" /> Actualizar
+      </button>
+    </div>
   </div>
-  <aside class="panel cart-panel" aria-label="Venta actual"><div class="panel-heading"><h2 class="cart-title"><ps-icon name="cart"/> Venta actual</h2><button class="btn btn-quiet btn-small" (click)="vaciar()" [disabled]="bloqueado()||!carrito().length">Vaciar</button></div>
-   <div class="cart-lines">@for(l of carrito();track l.producto.id){<div class="cart-line"><div class="cart-line-top"><div><h3>{{l.producto.nombre}}</h3><small>{{l.producto.precioVenta|currency:'USD'}} por {{unidad(l.producto)}}</small></div><button class="icon-btn danger" [disabled]="bloqueado()" (click)="quitar(l.producto.id)" [attr.aria-label]="'Quitar '+l.producto.nombre"><ps-icon name="close"/></button></div>
-    @if(!l.disponible){<p class="cart-invalid">Ya no está disponible. Retíralo de la venta.</p>}
-    <div class="cart-line-bottom"><div class="quantity-control"><button [disabled]="bloqueado()" (click)="disminuir(l.producto.id)" [attr.aria-label]="'Restar una unidad de '+l.producto.nombre"><ps-icon name="minus"/></button><input type="number" min="1" step="1" [max]="servicio(l.producto)?100000:l.producto.stock" [ngModel]="l.cantidad" (ngModelChange)="cantidad(l.producto.id,$event)" [disabled]="bloqueado()" [attr.aria-label]="'Cantidad de '+l.producto.nombre"><button [disabled]="bloqueado()||(!servicio(l.producto)&&l.cantidad>=l.producto.stock)||l.cantidad>=100000" (click)="agregar(l.producto)" [attr.aria-label]="'Sumar una unidad de '+l.producto.nombre"><ps-icon name="plus"/></button></div><strong>{{l.producto.precioVenta*l.cantidad|currency:'USD'}}</strong></div>
-    @if(servicio(l.producto)){<input class="service-notes" maxlength="200" [(ngModel)]="l.observaciones" [disabled]="bloqueado()" placeholder="Detalle del trabajo · opcional" [attr.aria-label]="'Detalle de '+l.producto.nombre">}
-   </div>}</div>
-   <div class="cart-totals"><div class="cart-total"><span>Total de la venta</span><strong>{{total()|currency:'USD'}}</strong></div>
-    <div class="payment-form"><label>Medio de pago<select aria-label="Medio de pago" name="medio" [(ngModel)]="metodo" (ngModelChange)="cambiarPago()" [disabled]="bloqueado()"><option value="EFECTIVO">Efectivo</option><option value="TARJETA">Tarjeta</option><option value="TRANSFERENCIA">Transferencia</option></select></label>
-    @if(metodo==='EFECTIVO'){<div class="cash-payment"><label for="cash-received">Recibido · USD</label><div class="received-field"><input id="cash-received" name="recibido" type="number" min="0" step="0.01" [(ngModel)]="recibido" [disabled]="bloqueado()" placeholder="0.00"><button type="button" class="btn btn-secondary btn-small" [disabled]="bloqueado()||!carrito().length" (click)="recibido=total()">Exacto</button></div></div><div class="change-display"><span>Cambio</span><strong>{{cambio()|currency:'USD'}}</strong></div>}
-    @else{<label>Referencia del pago · opcional<input name="referencia" [(ngModel)]="referencia" maxlength="80" [disabled]="bloqueado()" placeholder="Comprobante o referencia"></label><small class="payment-help">{{metodo==='TARJETA'?'Realiza el cobro en tu terminal y luego confirma esta venta.':'Verifica la transferencia antes de confirmar esta venta.'}}</small>}
-    <label>Cliente · opcional<input name="cliente" [(ngModel)]="cliente" maxlength="160" [disabled]="bloqueado()" placeholder="Público general"></label></div>
-    <button class="btn btn-primary" (click)="cobrar()" [disabled]="busy()||!puedeCobrar()">@if(busy()){<span class="spinner"></span> Confirmando…}@else{<ps-icon name="check"/> {{pendiente()?'Reintentar confirmación':'Confirmar cobro'}}}</button><p>Los precios, importes y existencias se validan al confirmar.</p>
-   </div>
-  </aside>
- </div>
+  <div class="pos-layout">
+    <div class="pos-catalog">
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Artículos y servicios</h2>
+            <p>Los servicios se cobran por cantidad, sin exigir stock.</p>
+          </div>
+          <span class="count-label">{{ productos().length }} disponibles</span>
+        </div>
+        <div class="pos-filters">
+          <div class="search-field">
+            <ps-icon name="search" /><input
+              #buscador
+              aria-label="Buscar o escanear código"
+              placeholder="Escanea un código y presiona Enter, o busca por nombre…"
+              [(ngModel)]="buscar"
+              (keydown.enter)="agregarCodigo($event)"
+              [disabled]="bloqueado()"
+              autocomplete="off"
+            />
+          </div>
+          <div class="pos-filter-row">
+            <select aria-label="Tipo de catálogo" [(ngModel)]="tipo">
+              <option value="TODOS">Artículos y servicios</option>
+              <option value="PRODUCTO">Artículos</option>
+              <option value="SERVICIO">Servicios</option></select
+            ><select aria-label="Categoría del catálogo" [(ngModel)]="categoria">
+              <option value="">Todas las categorías</option>
+              @for (c of categorias(); track c) {
+                <option [value]="c">{{ c }}</option>
+              }
+            </select>
+          </div>
+        </div>
+        @if (loading()) {
+          <div class="loading-line" role="status">
+            <span class="spinner"></span> Cargando catálogo…
+          </div>
+        } @else {
+          <div class="table-scroll">
+            <table class="pos-table">
+              <thead>
+                <tr>
+                  <th>Artículo / servicio</th>
+                  <th>Disponible</th>
+                  <th>Precio</th>
+                  <th class="text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (p of filtrados(); track p.id) {
+                  <tr>
+                    <td>
+                      <div class="cell-primary">
+                        <span class="product-symbol"
+                          ><ps-icon [name]="servicio(p) ? 'printer' : 'box'"
+                        /></span>
+                        <div>
+                          <strong>{{ p.nombre }}</strong
+                          ><small
+                            >{{ p.sku }} · {{ p.categoria }}
+                            @if (p.ubicacion) {
+                              · {{ p.ubicacion }}
+                            }
+                          </small>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      @if (servicio(p)) {
+                        <span class="service-tag">Servicio</span>
+                      } @else {
+                        <span
+                          class="stock-tag"
+                          [class.low]="p.stock > 0 && p.stock <= p.stockMinimo"
+                          [class.empty]="p.stock === 0"
+                          >{{ p.stock }}</span
+                        >
+                      }
+                    </td>
+                    <td>
+                      <strong>{{ p.precioVenta | currency: 'USD' }}</strong
+                      ><small class="price-unit">por {{ unidad(p) }}</small>
+                    </td>
+                    <td class="text-right">
+                      <button
+                        class="btn btn-quiet btn-small"
+                        [disabled]="
+                          bloqueado() || (!servicio(p) && p.stock === 0) || p.precioVenta <= 0
+                        "
+                        (click)="agregar(p)"
+                        [attr.aria-label]="'Agregar ' + p.nombre"
+                      >
+                        <ps-icon name="plus" /> Agregar
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4">
+                      <div class="empty-state">
+                        <ps-icon name="search" />
+                        <h3>No hay coincidencias</h3>
+                        <p>Prueba otro nombre, código o categoría.</p>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+        <div class="panel-footer">
+          El lector de códigos funciona como teclado: coloca el cursor en la búsqueda y escanea.
+        </div>
+      </section>
+    </div>
+    <aside class="panel cart-panel" aria-label="Venta actual">
+      <div class="panel-heading">
+        <h2 class="cart-title"><ps-icon name="cart" /> Venta actual</h2>
+        <button
+          class="btn btn-quiet btn-small"
+          (click)="vaciar()"
+          [disabled]="bloqueado() || !carrito().length"
+        >
+          Vaciar
+        </button>
+      </div>
+      <div class="cart-lines">
+        @for (l of carrito(); track l.producto.id) {
+          <div class="cart-line">
+            <div class="cart-line-top">
+              <div>
+                <h3>{{ l.producto.nombre }}</h3>
+                <small
+                  >{{ l.producto.precioVenta | currency: 'USD' }} por
+                  {{ unidad(l.producto) }}</small
+                >
+              </div>
+              <button
+                class="icon-btn danger"
+                [disabled]="bloqueado()"
+                (click)="quitar(l.producto.id)"
+                [attr.aria-label]="'Quitar ' + l.producto.nombre"
+              >
+                <ps-icon name="close" />
+              </button>
+            </div>
+            @if (!l.disponible) {
+              <p class="cart-invalid">Ya no está disponible. Retíralo de la venta.</p>
+            }
+            <div class="cart-line-bottom">
+              <div class="quantity-control">
+                <button
+                  [disabled]="bloqueado()"
+                  (click)="disminuir(l.producto.id)"
+                  [attr.aria-label]="'Restar una unidad de ' + l.producto.nombre"
+                >
+                  <ps-icon name="minus" /></button
+                ><input
+                  type="number"
+                  min="1"
+                  step="1"
+                  [max]="servicio(l.producto) ? 100000 : l.producto.stock"
+                  [ngModel]="l.cantidad"
+                  (ngModelChange)="cantidad(l.producto.id, $event)"
+                  [disabled]="bloqueado()"
+                  [attr.aria-label]="'Cantidad de ' + l.producto.nombre"
+                /><button
+                  [disabled]="
+                    bloqueado() ||
+                    (!servicio(l.producto) && l.cantidad >= l.producto.stock) ||
+                    l.cantidad >= 100000
+                  "
+                  (click)="agregar(l.producto)"
+                  [attr.aria-label]="'Sumar una unidad de ' + l.producto.nombre"
+                >
+                  <ps-icon name="plus" />
+                </button>
+              </div>
+              <strong>{{ l.producto.precioVenta * l.cantidad | currency: 'USD' }}</strong>
+            </div>
+            @if (servicio(l.producto)) {
+              <input
+                class="service-notes"
+                maxlength="200"
+                [(ngModel)]="l.observaciones"
+                [disabled]="bloqueado()"
+                placeholder="Detalle del trabajo · opcional"
+                [attr.aria-label]="'Detalle de ' + l.producto.nombre"
+              />
+            }
+          </div>
+        }
+      </div>
+      <div class="cart-totals">
+        <div class="cart-total">
+          <span>Total de la venta</span><strong>{{ total() | currency: 'USD' }}</strong>
+        </div>
+        <div class="payment-form">
+          <label
+            >Medio de pago<select
+              aria-label="Medio de pago"
+              name="medio"
+              [(ngModel)]="metodo"
+              (ngModelChange)="cambiarPago()"
+              [disabled]="bloqueado()"
+            >
+              <option value="EFECTIVO">Efectivo</option>
+              <option value="TARJETA">Tarjeta</option>
+              <option value="TRANSFERENCIA">Transferencia</option>
+            </select></label
+          >
+          @if (metodo === 'EFECTIVO') {
+            <div class="cash-payment">
+              <label for="cash-received">Recibido · USD</label>
+              <div class="received-field">
+                <input
+                  id="cash-received"
+                  name="recibido"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  [(ngModel)]="recibido"
+                  [disabled]="bloqueado()"
+                  placeholder="0.00"
+                /><button
+                  type="button"
+                  class="btn btn-secondary btn-small"
+                  [disabled]="bloqueado() || !carrito().length"
+                  (click)="recibido = total()"
+                >
+                  Exacto
+                </button>
+              </div>
+            </div>
+            <div class="change-display">
+              <span>Cambio</span><strong>{{ cambio() | currency: 'USD' }}</strong>
+            </div>
+          } @else {
+            <label
+              >Referencia del pago · opcional<input
+                name="referencia"
+                [(ngModel)]="referencia"
+                maxlength="80"
+                [disabled]="bloqueado()"
+                placeholder="Comprobante o referencia" /></label
+            ><small class="payment-help">{{
+              metodo === 'TARJETA'
+                ? 'Realiza el cobro en tu terminal y luego confirma esta venta.'
+                : 'Verifica la transferencia antes de confirmar esta venta.'
+            }}</small>
+          }
+          <label
+            >Cliente · opcional<input
+              name="cliente"
+              [(ngModel)]="cliente"
+              maxlength="160"
+              [disabled]="bloqueado()"
+              placeholder="Público general"
+          /></label>
+        </div>
+        <button class="btn btn-primary" (click)="cobrar()" [disabled]="busy() || !puedeCobrar()">
+          @if (busy()) {
+            <span class="spinner"></span> Confirmando…
+          } @else {
+            <ps-icon name="check" />
+            {{ pendiente() ? 'Reintentar confirmación' : 'Confirmar cobro' }}
+          }
+        </button>
+        <p>Los precios, importes y existencias se validan al confirmar.</p>
+      </div>
+    </aside>
+  </div>
 </div>
-@if(comprobante();as ticket){<ps-ticket [ticket]="ticket" (cerrar)="comprobante.set(null)"/>}
+@if (comprobante(); as ticket) {
+  <ps-ticket [ticket]="ticket" (cerrar)="comprobante.set(null)" />
+}

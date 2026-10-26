@@ -1,28 +1,82 @@
 package sv.puntostock.api;
-import sv.puntostock.api.Contratos.*;
-import sv.puntostock.entity.*;
-import sv.puntostock.repository.*;
+
+import static org.springframework.http.HttpStatus.FORBIDDEN;
+
+import jakarta.servlet.http.*;
 import jakarta.validation.Valid;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jwt.*;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseCookie;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.transaction.annotation.Transactional;
-import static org.springframework.http.HttpStatus.*;
-import java.time.Instant;
-import java.util.*;
-@RestController @RequestMapping("/api")
+import sv.puntostock.application.Contratos;
+import sv.puntostock.security.Sesiones;
+
+@RestController
+@RequestMapping("/api/auth")
 public class AuthController {
- private final UsuarioRepository usuarios;private final RolRepository roles;private final PasswordEncoder passwords;private final JwtEncoder encoder;
- public AuthController(UsuarioRepository u,RolRepository r,PasswordEncoder p,JwtEncoder e){usuarios=u;roles=r;passwords=p;encoder=e;}
- @PostMapping("/auth/login") public Map<String,Object> login(@Valid @RequestBody Login in){
-  var u=usuarios.findByUsername(in.username()).filter(x->x.activo).orElseThrow(()->new ResponseStatusException(UNAUTHORIZED,"Credenciales inválidas"));
-  if(!passwords.matches(in.password(),u.passwordHash))throw new ResponseStatusException(UNAUTHORIZED,"Credenciales inválidas");
-  long expiresIn=in.rememberMe()?604800:900;
-  var now=Instant.now();var claims=JwtClaimsSet.builder().issuer("puntostock").subject(u.username).claim("authVersion",u.authVersion).issuedAt(now).expiresAt(now.plusSeconds(expiresIn)).build();
-  var token=encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(),claims)).getTokenValue();
-  return Map.of("accessToken",token,"expiresIn",expiresIn,"roles",u.roles.stream().map(r->r.nombre).toList());
- }
+  private static final String COOKIE = "puntostock.refresh";
+  private final Sesiones sesiones;
+  private final boolean secure;
+
+  public AuthController(Sesiones sesiones, @Value("${app.session.secure:true}") boolean secure) {
+    this.sesiones = sesiones;
+    this.secure = secure;
+  }
+
+  @PostMapping("/login")
+  public Sesiones.Acceso login(
+      @Valid @RequestBody Contratos.Login in, HttpServletRequest req, HttpServletResponse res) {
+    verificarNavegador(req);
+    var emitida = sesiones.ingresar(in.username(), in.password(), in.rememberMe());
+    sesiones.salir(cookie(req));
+    guardarCookie(res, emitida);
+    return emitida.acceso();
+  }
+
+  @PostMapping("/renovar")
+  public Sesiones.Acceso renovar(HttpServletRequest req, HttpServletResponse res) {
+    verificarNavegador(req);
+    var emitida = sesiones.renovar(cookie(req));
+    guardarCookie(res, emitida);
+    return emitida.acceso();
+  }
+
+  @PostMapping("/salir")
+  public void salir(HttpServletRequest req, HttpServletResponse res) {
+    verificarNavegador(req);
+    sesiones.salir(cookie(req));
+    res.addHeader(
+        "Set-Cookie",
+        ResponseCookie.from(COOKIE, "")
+            .httpOnly(true)
+            .secure(secure)
+            .sameSite("Strict")
+            .path("/api/auth")
+            .maxAge(0)
+            .build()
+            .toString());
+  }
+
+  private void guardarCookie(HttpServletResponse res, Sesiones.Emitida e) {
+    var b =
+        ResponseCookie.from(COOKIE, e.renovacion())
+            .httpOnly(true)
+            .secure(secure)
+            .sameSite("Strict")
+            .path("/api/auth");
+    if (e.recordar()) b.maxAge(604800);
+    res.addHeader("Set-Cookie", b.build().toString());
+  }
+
+  // Cabecera no enviable mediante formularios de otro origen; CORS permanece deshabilitado.
+  private void verificarNavegador(HttpServletRequest req) {
+    if (!"1".equals(req.getHeader("X-PuntoStock")))
+      throw new ResponseStatusException(FORBIDDEN, "Solicitud de sesión no permitida.");
+  }
+
+  private String cookie(HttpServletRequest req) {
+    if (req.getCookies() != null)
+      for (var c : req.getCookies()) if (c.getName().equals(COOKIE)) return c.getValue();
+    return null;
+  }
 }

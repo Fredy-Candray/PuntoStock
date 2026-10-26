@@ -1,0 +1,13 @@
+app:
+  session:
+    secure: true
+server:
+  shutdown: graceful
+management:
+  endpoint:
+    health:
+      show-details: never
+logging:
+  structured:
+    format:
+      console: logstash

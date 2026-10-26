@@ -1,3 +1,30 @@
+# Validación y evidencia
+
+## Ejecución vigente
+
+Java 21 y Node 24. No asumir que un conteo estático de @Test es una suite aprobada.
+
+```text
+cd backend
+mvn -B spotless:check verify
+cd ../frontend
+npm ci
+npm run format:check
+npm run lint
+npm test
+npm run build
+npm run test:e2e
+npm audit --audit-level=high
+```
+
+Para las pruebas SQL locales: `scripts/Test-SqlIntegration.ps1`. Solo se habilitan con SQL_TEST_URL explícita cuyo nombre es PuntoStock_qa_<GUID>. Sin esa variable, Failsafe registra integración omitida: no confundirlo con validación de SQL. El workflow CI prepara SQL Server aislado y proporciona las variables; su ejecución remota se verifica en GitHub después de subir los cambios.
+
+Los resultados reproducibles se encuentran en backend/target/surefire-reports, failsafe-reports y site/jacoco, y en los reportes locales de Vitest y Playwright. El navegador prueba una API simulada, sin enviar correos ni registrar ventas del negocio; SQL ServerIT comprueba persistencia real en la base desechable.
+
+La cobertura sirve para localizar vacíos; los criterios principales son última unidad concurrente, rollback íntegro, UUID sin doble cobro, costo histórico, 401/403, CSRF, revocación y reconfirmación de precio. La restauración real se verifica por separado con Test-BackupRestore.ps1. HTTPS, contenedores y objetivos de recuperación necesitan el entorno de despliegue; no se acreditan con mocks.
+
+## Antecedentes históricos (no repetición de esta ejecución)
+
 # Validación de la entrega
 
 Fecha: 15 de octubre de 2026.

@@ -1,28 +1,309 @@
-<div class="page-heading"><div><span class="overline">CATÁLOGO</span><h1 style="margin-top:8px">Artículos y servicios, en orden.</h1><p>Organiza papelería, impresiones, fotografías y los demás artículos del negocio.</p></div><div class="page-actions"><button class="btn btn-secondary" (click)="nuevoServicio()" [disabled]="busy()"><ps-icon name="plus"/> Nuevo servicio</button><button class="btn btn-primary" (click)="nuevo()" [disabled]="busy()"><ps-icon name="plus"/> Nuevo artículo</button></div></div>
-@if(mensaje()){<div class="notice" [class.notice-error]="mensaje().startsWith('No se')||mensaje().startsWith('Error')" [class.notice-info]="!mensaje().startsWith('No se')&&!mensaje().startsWith('Error')" role="status"><ps-icon name="alert"/><span>{{mensaje()}}</span></div>}
-@if(editor()){
- <section class="panel editor-panel" id="product-editor"><div class="panel-heading"><div><h2>{{id?'Editar':'Agregar'}} {{modelo.tipo==='SERVICIO'?'servicio':'artículo'}}</h2><p>Define el precio por unidad de venta. Los servicios no requieren existencias.</p></div><button class="icon-btn" type="button" [disabled]="busy()" (click)="cerrar()" aria-label="Cerrar formulario"><ps-icon name="close"/></button></div>
- <form #f="ngForm" (ngSubmit)="guardar()" class="panel-body"><div class="field-grid">
-  <label>Tipo<select aria-label="Tipo" name="tipo" [(ngModel)]="modelo.tipo" (ngModelChange)="cambiarTipo()"><option value="PRODUCTO">Artículo con inventario</option><option value="SERVICIO">Servicio sin existencias</option></select></label>
-  <label>Categoría<input name="categoria" [(ngModel)]="modelo.categoria" maxlength="80" list="categorias" required><datalist id="categorias">@for(c of categorias;track c){<option [value]="c"></option>}</datalist></label>
-  <label>Código SKU / código de barras<input name="sku" [(ngModel)]="modelo.sku" required maxlength="80" placeholder="Ej. LAP-001 o IMP-BN-CARTA"></label>
-  <label>Nombre<input name="nombre" [(ngModel)]="modelo.nombre" required maxlength="160" placeholder="Ej. Cuaderno universitario o Impresión B/N carta"></label>
-  <label class="field-wide">Descripción<textarea name="descripcion" [(ngModel)]="modelo.descripcion" required maxlength="2000" placeholder="Tamaño, presentación, características o condiciones del servicio"></textarea></label>
-  <label>Unidad de venta<select aria-label="Unidad de venta" name="unidad" [(ngModel)]="modelo.unidad">@for(u of unidades;track u){<option [value]="u">{{u.replaceAll('_',' ')}}</option>}</select><span class="field-help">Precio y cantidad corresponden a esta unidad; por ejemplo, una página o una caja.</span></label>
-  <label>Marca / referencia<input name="marca" [(ngModel)]="modelo.marca" maxlength="80" placeholder="Opcional"></label>
-  <label>{{modelo.tipo==='SERVICIO'?'Costo estimado por unidad':'Precio de compra por unidad'}} · USD<input name="costo" type="number" min="0" max="999999.99" step="0.01" [(ngModel)]="modelo.precioCompra" required>@if(modelo.tipo==='SERVICIO'){<span class="field-help">Incluye papel, tinta y otros materiales utilizados por página, foto o trabajo.</span>}</label>
-  <label>Precio de venta por unidad · USD<input name="precio" type="number" min="0.01" max="999999.99" step="0.01" [(ngModel)]="modelo.precioVenta" required></label>
-  @if(modelo.tipo!=='SERVICIO'){
-   <label>Stock mínimo<input name="minimo" type="number" min="0" max="1000000" step="1" [(ngModel)]="modelo.stockMinimo" required><span class="field-help">Se mostrará una alerta al llegar a este nivel.</span></label>
-   <label>Ubicación<input name="ubicacion" [(ngModel)]="modelo.ubicacion" maxlength="80" placeholder="Ej. Estante A, vitrina 2"></label>
-  }
-  <label class="field-wide">Imagen · URL o ruta opcional<input name="foto" [(ngModel)]="modelo.fotoUrl" maxlength="1000" placeholder="https://… o /assets/producto.svg"><span class="field-help">Se utiliza una imagen predeterminada si lo dejas vacío. Las existencias iniciales se registran en Inventario.</span></label>
- </div><div class="form-actions"><button class="btn btn-primary" [disabled]="f.invalid||busy()">@if(busy()){<span class="spinner"></span>}@else{<ps-icon name="check"/>} {{id?'Guardar cambios':'Crear'}}</button><button class="btn btn-secondary" type="button" [disabled]="busy()" (click)="cerrar()">Cancelar</button></div></form></section>
+<div class="page-heading">
+  <div>
+    <span class="overline">CATÁLOGO</span>
+    <h1 style="margin-top: 8px">Artículos y servicios, en orden.</h1>
+    <p>Organiza papelería, impresiones, fotografías y los demás artículos del negocio.</p>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-secondary" (click)="nuevoServicio()" [disabled]="busy()">
+      <ps-icon name="plus" /> Nuevo servicio</button
+    ><button class="btn btn-primary" (click)="nuevo()" [disabled]="busy()">
+      <ps-icon name="plus" /> Nuevo artículo
+    </button>
+  </div>
+</div>
+@if (mensaje()) {
+  <div
+    class="notice"
+    [class.notice-error]="mensaje().startsWith('No se') || mensaje().startsWith('Error')"
+    [class.notice-info]="!mensaje().startsWith('No se') && !mensaje().startsWith('Error')"
+    role="status"
+  >
+    <ps-icon name="alert" /><span>{{ mensaje() }}</span>
+  </div>
 }
-<section class="panel"><div class="panel-heading"><div><h2>Catálogo del negocio</h2><p>Precios y disponibilidad para el punto de venta.</p></div><span class="count-label">{{productos().length}} registros activos</span></div>
- <div class="toolbar"><div class="search-field"><ps-icon name="search"/><input aria-label="Buscar productos" placeholder="Nombre, código, categoría o marca…" [(ngModel)]="buscar"></div><button class="btn btn-quiet btn-small" (click)="cargar()" [disabled]="busy()"><ps-icon name="refresh"/> Actualizar</button></div>
- <div class="table-scroll"><table><thead><tr><th>Artículo / servicio</th><th>Código</th><th>Costo</th><th>Precio</th><th>Disponibilidad</th><th>Acciones</th></tr></thead><tbody>
- @for(p of filtrados();track p.id){<tr><td><div class="cell-primary"><span class="product-symbol"><ps-icon [name]="p.tipo==='SERVICIO'?'printer':'box'"/></span><div><strong>{{p.nombre}}</strong><small>{{p.categoria}} · {{p.unidad.toLowerCase()}}@if(p.marca){ · {{p.marca}}}</small></div></div></td><td class="mono">{{p.sku}}</td><td>{{p.precioCompra|currency:'USD'}}</td><td><strong>{{p.precioVenta|currency:'USD'}}</strong></td><td>@if(p.tipo==='SERVICIO'){<span class="service-tag">Servicio</span>}@else{<span class="stock-tag" [class.low]="p.stock>0&&p.stock<=p.stockMinimo" [class.empty]="p.stock===0">{{p.stock}} {{p.unidad.toLowerCase()}}</span>}</td><td><div class="table-actions"><button class="icon-btn" [disabled]="busy()" (click)="editar(p)" [attr.aria-label]="'Editar '+p.nombre"><ps-icon name="edit"/></button><button class="icon-btn danger" [disabled]="busy()" (click)="eliminar(p)" [attr.aria-label]="'Desactivar '+p.nombre"><ps-icon name="trash"/></button></div></td></tr>}
- @empty{<tr><td colspan="6"><div class="empty-state"><ps-icon name="box"/><h3>{{buscar?'No encontramos coincidencias':'Tu catálogo empieza aquí'}}</h3><p>Agrega artículos y servicios con sus precios antes de vender.</p></div></td></tr>}
- </tbody></table></div><div class="panel-footer">Desactivar conserva el historial. Los servicios se cobran por cantidad y no descuentan existencias.</div>
+@if (editor()) {
+  <section class="panel editor-panel" id="product-editor">
+    <div class="panel-heading">
+      <div>
+        <h2>
+          {{ id ? 'Editar' : 'Agregar' }} {{ modelo.tipo === 'SERVICIO' ? 'servicio' : 'artículo' }}
+        </h2>
+        <p>Define el precio por unidad de venta. Los servicios no requieren existencias.</p>
+      </div>
+      <button
+        class="icon-btn"
+        type="button"
+        [disabled]="busy()"
+        (click)="cerrar()"
+        aria-label="Cerrar formulario"
+      >
+        <ps-icon name="close" />
+      </button>
+    </div>
+    <form #f="ngForm" (ngSubmit)="guardar()" class="panel-body">
+      <div class="field-grid">
+        <label
+          >Tipo<select
+            aria-label="Tipo"
+            name="tipo"
+            [(ngModel)]="modelo.tipo"
+            (ngModelChange)="cambiarTipo()"
+          >
+            <option value="PRODUCTO">Artículo con inventario</option>
+            <option value="SERVICIO">Servicio sin existencias</option>
+          </select></label
+        >
+        <label
+          >Categoría<input
+            name="categoria"
+            [(ngModel)]="modelo.categoria"
+            maxlength="80"
+            list="categorias"
+            required /><datalist id="categorias">
+            @for (c of categorias; track c) {
+              <option [value]="c"></option>
+            }</datalist
+        ></label>
+        <label
+          >Código SKU / código de barras<input
+            name="sku"
+            [(ngModel)]="modelo.sku"
+            required
+            maxlength="80"
+            placeholder="Ej. LAP-001 o IMP-BN-CARTA"
+        /></label>
+        <label
+          >Nombre<input
+            name="nombre"
+            [(ngModel)]="modelo.nombre"
+            required
+            maxlength="160"
+            placeholder="Ej. Cuaderno universitario o Impresión B/N carta"
+        /></label>
+        <label class="field-wide"
+          >Descripción<textarea
+            name="descripcion"
+            [(ngModel)]="modelo.descripcion"
+            required
+            maxlength="2000"
+            placeholder="Tamaño, presentación, características o condiciones del servicio"
+          ></textarea>
+        </label>
+        <label
+          >Unidad de venta<select
+            aria-label="Unidad de venta"
+            name="unidad"
+            [(ngModel)]="modelo.unidad"
+          >
+            @for (u of unidades; track u) {
+              <option [value]="u">{{ u.replaceAll('_', ' ') }}</option>
+            }</select
+          ><span class="field-help"
+            >Precio y cantidad corresponden a esta unidad; por ejemplo, una página o una caja.</span
+          ></label
+        >
+        <label
+          >Marca / referencia<input
+            name="marca"
+            [(ngModel)]="modelo.marca"
+            maxlength="80"
+            placeholder="Opcional"
+        /></label>
+        <label
+          >{{
+            modelo.tipo === 'SERVICIO' ? 'Costo estimado por unidad' : 'Precio de compra por unidad'
+          }}
+          · USD<input
+            name="costo"
+            type="number"
+            min="0"
+            max="999999.99"
+            step="0.01"
+            [(ngModel)]="modelo.precioCompra"
+            required
+          />
+          @if (modelo.tipo === 'SERVICIO') {
+            <span class="field-help"
+              >Incluye papel, tinta y otros materiales utilizados por página, foto o trabajo.</span
+            >
+          }
+        </label>
+        <label
+          >Precio de venta por unidad · USD<input
+            name="precio"
+            type="number"
+            min="0.01"
+            max="999999.99"
+            step="0.01"
+            [(ngModel)]="modelo.precioVenta"
+            required
+        /></label>
+        @if (modelo.tipo !== 'SERVICIO') {
+          <label
+            >Stock mínimo<input
+              name="minimo"
+              type="number"
+              min="0"
+              max="1000000"
+              step="1"
+              [(ngModel)]="modelo.stockMinimo"
+              required
+            /><span class="field-help">Se mostrará una alerta al llegar a este nivel.</span></label
+          >
+          <label
+            >Ubicación<input
+              name="ubicacion"
+              [(ngModel)]="modelo.ubicacion"
+              maxlength="80"
+              placeholder="Ej. Estante A, vitrina 2"
+          /></label>
+        }
+        <label class="field-wide"
+          >Imagen · URL o ruta opcional<input
+            name="foto"
+            [(ngModel)]="modelo.fotoUrl"
+            maxlength="1000"
+            placeholder="https://… o /assets/producto.svg"
+          /><span class="field-help"
+            >Se utiliza una imagen predeterminada si lo dejas vacío. Las existencias iniciales se
+            registran en Inventario.</span
+          ></label
+        >
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" [disabled]="f.invalid || busy()">
+          @if (busy()) {
+            <span class="spinner"></span>
+          } @else {
+            <ps-icon name="check" />
+          }
+          {{ id ? 'Guardar cambios' : 'Crear' }}</button
+        ><button class="btn btn-secondary" type="button" [disabled]="busy()" (click)="cerrar()">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  </section>
+}
+<section class="panel">
+  <div class="panel-heading">
+    <div>
+      <h2>Catálogo del negocio</h2>
+      <p>Precios y disponibilidad para el punto de venta.</p>
+    </div>
+    <span class="count-label">{{ total() }} registros activos</span>
+  </div>
+  <div class="toolbar">
+    <div class="search-field">
+      <ps-icon name="search" /><input
+        aria-label="Buscar productos"
+        placeholder="Nombre, código, categoría o marca…"
+        [(ngModel)]="buscar"
+        (ngModelChange)="buscarEnServidor()"
+      />
+    </div>
+    <button class="btn btn-quiet btn-small" (click)="cargar()" [disabled]="busy()">
+      <ps-icon name="refresh" /> Actualizar
+    </button>
+  </div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Artículo / servicio</th>
+          <th>Código</th>
+          <th>Costo</th>
+          <th>Precio</th>
+          <th>Disponibilidad</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of filtrados(); track p.id) {
+          <tr>
+            <td>
+              <div class="cell-primary">
+                <span class="product-symbol"
+                  ><ps-icon [name]="p.tipo === 'SERVICIO' ? 'printer' : 'box'"
+                /></span>
+                <div>
+                  <strong>{{ p.nombre }}</strong
+                  ><small
+                    >{{ p.categoria }} · {{ p.unidad.toLowerCase() }}
+                    @if (p.marca) {
+                      · {{ p.marca }}
+                    }
+                  </small>
+                </div>
+              </div>
+            </td>
+            <td class="mono">{{ p.sku }}</td>
+            <td>{{ p.precioCompra | currency: 'USD' }}</td>
+            <td>
+              <strong>{{ p.precioVenta | currency: 'USD' }}</strong>
+            </td>
+            <td>
+              @if (p.tipo === 'SERVICIO') {
+                <span class="service-tag">Servicio</span>
+              } @else {
+                <span
+                  class="stock-tag"
+                  [class.low]="p.stock > 0 && p.stock <= p.stockMinimo"
+                  [class.empty]="p.stock === 0"
+                  >{{ p.stock }} {{ p.unidad.toLowerCase() }}</span
+                >
+              }
+            </td>
+            <td>
+              <div class="table-actions">
+                <button
+                  class="icon-btn"
+                  [disabled]="busy()"
+                  (click)="editar(p)"
+                  [attr.aria-label]="'Editar ' + p.nombre"
+                >
+                  <ps-icon name="edit" /></button
+                ><button
+                  class="icon-btn danger"
+                  [disabled]="busy()"
+                  (click)="eliminar(p)"
+                  [attr.aria-label]="'Desactivar ' + p.nombre"
+                >
+                  <ps-icon name="trash" />
+                </button>
+              </div>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <ps-icon name="box" />
+                <h3>{{ buscar ? 'No encontramos coincidencias' : 'Tu catálogo empieza aquí' }}</h3>
+                <p>Agrega artículos y servicios con sus precios antes de vender.</p>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <div class="panel-footer">
+    Desactivar conserva el historial. Los servicios se cobran por cantidad y no descuentan
+    existencias.
+  </div>
 </section>
+
+<div class="pagination" aria-label="Paginación">
+  <button class="btn btn-secondary" (click)="cambiarPagina(-1)" [disabled]="pagina === 0">
+    Anterior</button
+  ><span>Página {{ pagina + 1 }} de {{ paginas() || 1 }} · {{ total() }} resultados</span
+  ><button
+    class="btn btn-secondary"
+    (click)="cambiarPagina(1)"
+    [disabled]="pagina + 1 >= paginas()"
+  >
+    Siguiente
+  </button>
+</div>

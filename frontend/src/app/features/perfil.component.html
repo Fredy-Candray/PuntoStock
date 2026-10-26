@@ -1,62 +1,304 @@
-@if(error()){<div class="notice notice-error" role="alert"><ps-icon name="alert"/>{{error()}}</div>}
-@if(message()){<div class="notice notice-info" role="status"><ps-icon name="check"/>{{message()}}</div>}
-@if(loading()){<div class="loading-line" role="status"><span class="spinner"></span> Cargando tu perfil…</div>}
-@else if(auth.perfil();as user){
- <section class="panel profile-header">
-  <div class="profile-cover">
-   @if(user.fotoPortada){<button type="button" class="cover-preview" aria-label="Ampliar portada" (click)="expanded.set(user.fotoPortada)"><img [src]="user.fotoPortada" alt="Portada del perfil"></button>}
-   @if(editing()){
-    <input #coverInput type="file" accept="image/jpeg,image/png,image/webp" hidden (change)="seleccionar($event,'portada')">
-    <div class="cover-actions"><button type="button" class="btn btn-secondary btn-small" (click)="coverInput.click()" [disabled]="busy()"><ps-icon name="camera"/> Cambiar portada</button>@if(user.fotoPortada){<button type="button" class="btn btn-secondary btn-small" (click)="quitarFoto(true)" [disabled]="busy()" aria-label="Quitar portada"><ps-icon name="trash"/></button>}</div>
-   }
-  </div>
-  <div class="profile-hero">
-   <div class="profile-avatar-wrap">
-    @if(user.fotoPerfil){<button type="button" class="profile-avatar" (click)="expanded.set(user.fotoPerfil)" aria-label="Ampliar foto de perfil"><img [src]="user.fotoPerfil" [alt]="'Foto de '+user.nombre"></button>}
-    @else{<span class="profile-avatar">{{user.nombre.slice(0,1).toUpperCase()}}</span>}
-    @if(editing()){
-     <input #photoInput type="file" accept="image/jpeg,image/png,image/webp" hidden (change)="seleccionar($event,'foto')">
-     <button type="button" class="profile-photo-edit" aria-label="Cambiar foto de perfil" title="Cambiar foto de perfil" (click)="photoInput.click()" [disabled]="busy()"><ps-icon name="camera"/></button>
-    }
-   </div>
-   <div class="profile-identity"><h2>{{user.nombre}}</h2><span class="stock-tag">{{auth.admin()?'Administrador':'Vendedor'}}</span><p>{{user.correo||'Agrega tu correo desde Editar perfil.'}}</p></div>
-   @if(!editing()){<button type="button" class="btn btn-secondary" (click)="editar()"><ps-icon name="edit"/> Editar perfil</button>}
-  </div>
-  <div class="profile-tabs"><span>{{editing()?'Editar perfil':'Resumen'}}</span><small>{{'@'+user.username}}</small></div>
- </section>
- @if(editing()){
-  <section class="panel profile-editor"><div class="panel-heading"><div><h2>Editar perfil</h2><p>Actualiza tus datos personales y de contacto.</p></div></div>
-   <form #profileForm="ngForm" class="panel-body" (ngSubmit)="guardar()">
-    <div class="field-grid">
-     <label>Nombre completo<input name="nombre" [(ngModel)]="draft.nombre" required maxlength="160" autocomplete="name" [disabled]="busy()"></label>
-     <label>Correo electrónico<input name="correo" type="email" email [(ngModel)]="draft.correo" required maxlength="254" autocomplete="email" [disabled]="busy()"></label>
-     <label>Teléfono<input name="telefono" type="tel" [(ngModel)]="draft.telefono" maxlength="30" pattern="[+0-9 \(\)\-]*" autocomplete="tel" placeholder="7777-7777" [disabled]="busy()"></label>
-     <label>Usuario de acceso<input [value]="user.username" readonly><span class="field-help">Tu identificación para iniciar sesión.</span></label>
-    </div>
-    <div class="form-actions"><button type="button" class="btn btn-secondary" (click)="editing.set(false)" [disabled]="busy()">Cancelar</button><button type="submit" class="btn btn-primary" [disabled]="profileForm.invalid||busy()">@if(busy()){<span class="spinner"></span>} Guardar cambios</button>
-     @if(user.fotoPerfil){<button type="button" class="btn btn-quiet" (click)="quitarFoto()" [disabled]="busy()">Quitar foto de perfil</button>}
-    </div>
-   </form>
-  </section>
- }@else{
-  <div class="profile-columns">
-   <section class="panel"><div class="panel-heading"><div><h2>Detalles</h2><p>Datos personales y de contacto.</p></div></div>
-    <dl class="profile-details panel-body"><div><dt>Nombre completo</dt><dd>{{user.nombre}}</dd></div><div><dt>Correo electrónico</dt><dd>{{user.correo||'No registrado'}}</dd></div><div><dt>Nombre de usuario</dt><dd>{{'@'+user.username}}</dd></div><div><dt>Teléfono</dt><dd>{{user.telefono||'No registrado'}}</dd></div>@if(user.fechaCreacion){<div><dt>Miembro desde</dt><dd>{{creado()}}</dd></div>}</dl>
-   </section>
-   <section class="panel"><div class="panel-heading"><div><h2>Acceso al sistema</h2><p>Tu cuenta en PuntoStock.</p></div><ps-icon name="shield"/></div><div class="panel-body profile-access"><span class="stock-tag">Cuenta activa</span><h3>{{auth.admin()?'Administración del negocio':'Espacio del vendedor'}}</h3><p>{{auth.admin()?'Puedes gestionar productos, inventario y consultar los resultados del negocio.':'Puedes registrar ventas y consultar productos y existencias.'}}</p></div></section>
-  </div>
- }
-}@else{<button class="btn btn-secondary" type="button" (click)="cargar()">Intentar nuevamente</button>}
-@if(crop()){
- <div class="profile-modal-backdrop" (click)="cancelarFoto()">
-  <section class="profile-photo-dialog" role="dialog" aria-modal="true" aria-labelledby="crop-title" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" (click)="$event.stopPropagation()">
-   <h2 id="crop-title">{{target==='portada'?'Ajustar portada':'Ajustar foto de perfil'}}</h2><p>Arrastra la imagen para centrarla y ajusta el acercamiento.</p>
-   <div class="profile-crop-frame" [style.width.px]="frameWidth" [style.height.px]="frameHeight" (pointerdown)="comenzar($event)" (pointermove)="arrastrar($event)" (pointerup)="soltar()" (pointercancel)="soltar()"><img [src]="crop()" alt="Vista previa del recorte" draggable="false" [style.width.px]="ancho()" [style.height.px]="alto()" [style.transform]="transform()"></div>
-   <label>Acercamiento<input type="range" min="1" max="3" step="0.05" name="zoom" [(ngModel)]="zoom" (ngModelChange)="ajustar()"></label>
-   <div class="form-actions"><button type="button" class="btn btn-secondary" (click)="cancelarFoto()">Cancelar</button><button type="button" class="btn btn-primary" (click)="aplicarFoto()">Guardar imagen</button></div>
-  </section>
- </div>
+@if (error()) {
+  <div class="notice notice-error" role="alert"><ps-icon name="alert" />{{ error() }}</div>
 }
-@if(expanded()){
- <div class="profile-modal-backdrop" (click)="expanded.set('')"><section class="profile-image-dialog" role="dialog" aria-modal="true" aria-label="Imagen de perfil ampliada" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" (click)="$event.stopPropagation()"><button type="button" class="btn btn-secondary" (click)="expanded.set('')" aria-label="Cerrar imagen"><ps-icon name="close"/></button><img [src]="expanded()" alt="Imagen del perfil ampliada"></section></div>
+@if (message()) {
+  <div class="notice notice-info" role="status"><ps-icon name="check" />{{ message() }}</div>
+}
+@if (loading()) {
+  <div class="loading-line" role="status"><span class="spinner"></span> Cargando tu perfil…</div>
+} @else if (auth.perfil(); as user) {
+  <section class="panel profile-header">
+    <div class="profile-cover">
+      @if (user.fotoPortada) {
+        <button
+          type="button"
+          class="cover-preview"
+          aria-label="Ampliar portada"
+          (click)="expanded.set(user.fotoPortada)"
+        >
+          <img [src]="user.fotoPortada" alt="Portada del perfil" />
+        </button>
+      }
+      @if (editing()) {
+        <input
+          #coverInput
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          hidden
+          (change)="seleccionar($event, 'portada')"
+        />
+        <div class="cover-actions">
+          <button
+            type="button"
+            class="btn btn-secondary btn-small"
+            (click)="coverInput.click()"
+            [disabled]="busy()"
+          >
+            <ps-icon name="camera" /> Cambiar portada
+          </button>
+          @if (user.fotoPortada) {
+            <button
+              type="button"
+              class="btn btn-secondary btn-small"
+              (click)="quitarFoto(true)"
+              [disabled]="busy()"
+              aria-label="Quitar portada"
+            >
+              <ps-icon name="trash" />
+            </button>
+          }
+        </div>
+      }
+    </div>
+    <div class="profile-hero">
+      <div class="profile-avatar-wrap">
+        @if (user.fotoPerfil) {
+          <button
+            type="button"
+            class="profile-avatar"
+            (click)="expanded.set(user.fotoPerfil)"
+            aria-label="Ampliar foto de perfil"
+          >
+            <img [src]="user.fotoPerfil" [alt]="'Foto de ' + user.nombre" />
+          </button>
+        } @else {
+          <span class="profile-avatar">{{ user.nombre.slice(0, 1).toUpperCase() }}</span>
+        }
+        @if (editing()) {
+          <input
+            #photoInput
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            hidden
+            (change)="seleccionar($event, 'foto')"
+          />
+          <button
+            type="button"
+            class="profile-photo-edit"
+            aria-label="Cambiar foto de perfil"
+            title="Cambiar foto de perfil"
+            (click)="photoInput.click()"
+            [disabled]="busy()"
+          >
+            <ps-icon name="camera" />
+          </button>
+        }
+      </div>
+      <div class="profile-identity">
+        <h2>{{ user.nombre }}</h2>
+        <span class="stock-tag">{{ auth.admin() ? 'Administrador' : 'Vendedor' }}</span>
+        <p>{{ user.correo || 'Agrega tu correo desde Editar perfil.' }}</p>
+      </div>
+      @if (!editing()) {
+        <button type="button" class="btn btn-secondary" (click)="editar()">
+          <ps-icon name="edit" /> Editar perfil
+        </button>
+      }
+    </div>
+    <div class="profile-tabs">
+      <span>{{ editing() ? 'Editar perfil' : 'Resumen' }}</span
+      ><small>{{ '@' + user.username }}</small>
+    </div>
+  </section>
+  @if (editing()) {
+    <section class="panel profile-editor">
+      <div class="panel-heading">
+        <div>
+          <h2>Editar perfil</h2>
+          <p>Actualiza tus datos personales y de contacto.</p>
+        </div>
+      </div>
+      <form #profileForm="ngForm" class="panel-body" (ngSubmit)="guardar()">
+        <div class="field-grid">
+          <label
+            >Nombre completo<input
+              name="nombre"
+              [(ngModel)]="draft.nombre"
+              required
+              maxlength="160"
+              autocomplete="name"
+              [disabled]="busy()"
+          /></label>
+          <label
+            >Correo electrónico<input
+              name="correo"
+              type="email"
+              email
+              [(ngModel)]="draft.correo"
+              required
+              maxlength="254"
+              autocomplete="email"
+              [disabled]="busy()"
+          /></label>
+          <label
+            >Teléfono<input
+              name="telefono"
+              type="tel"
+              [(ngModel)]="draft.telefono"
+              maxlength="30"
+              pattern="[+0-9 \(\)\-]*"
+              autocomplete="tel"
+              placeholder="7777-7777"
+              [disabled]="busy()"
+          /></label>
+          <label
+            >Usuario de acceso<input [value]="user.username" readonly /><span class="field-help"
+              >Tu identificación para iniciar sesión.</span
+            ></label
+          >
+        </div>
+        <div class="form-actions">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="editing.set(false)"
+            [disabled]="busy()"
+          >
+            Cancelar</button
+          ><button type="submit" class="btn btn-primary" [disabled]="profileForm.invalid || busy()">
+            @if (busy()) {
+              <span class="spinner"></span>
+            }
+            Guardar cambios
+          </button>
+          @if (user.fotoPerfil) {
+            <button type="button" class="btn btn-quiet" (click)="quitarFoto()" [disabled]="busy()">
+              Quitar foto de perfil
+            </button>
+          }
+        </div>
+      </form>
+    </section>
+  } @else {
+    <div class="profile-columns">
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Detalles</h2>
+            <p>Datos personales y de contacto.</p>
+          </div>
+        </div>
+        <dl class="profile-details panel-body">
+          <div>
+            <dt>Nombre completo</dt>
+            <dd>{{ user.nombre }}</dd>
+          </div>
+          <div>
+            <dt>Correo electrónico</dt>
+            <dd>{{ user.correo || 'No registrado' }}</dd>
+          </div>
+          <div>
+            <dt>Nombre de usuario</dt>
+            <dd>{{ '@' + user.username }}</dd>
+          </div>
+          <div>
+            <dt>Teléfono</dt>
+            <dd>{{ user.telefono || 'No registrado' }}</dd>
+          </div>
+          @if (user.fechaCreacion) {
+            <div>
+              <dt>Miembro desde</dt>
+              <dd>{{ creado() }}</dd>
+            </div>
+          }
+        </dl>
+      </section>
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Acceso al sistema</h2>
+            <p>Tu cuenta en PuntoStock.</p>
+          </div>
+          <ps-icon name="shield" />
+        </div>
+        <div class="panel-body profile-access">
+          <span class="stock-tag">Cuenta activa</span>
+          <h3>{{ auth.admin() ? 'Administración del negocio' : 'Espacio del vendedor' }}</h3>
+          <p>
+            {{
+              auth.admin()
+                ? 'Puedes gestionar productos, inventario y consultar los resultados del negocio.'
+                : 'Puedes registrar ventas y consultar productos y existencias.'
+            }}
+          </p>
+        </div>
+      </section>
+    </div>
+  }
+} @else {
+  <button class="btn btn-secondary" type="button" (click)="cargar()">Intentar nuevamente</button>
+}
+@if (crop()) {
+  <div class="profile-modal-backdrop" (click)="cancelarFoto()">
+    <section
+      class="profile-photo-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="crop-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (click)="$event.stopPropagation()"
+    >
+      <h2 id="crop-title">
+        {{ target === 'portada' ? 'Ajustar portada' : 'Ajustar foto de perfil' }}
+      </h2>
+      <p>Arrastra la imagen para centrarla y ajusta el acercamiento.</p>
+      <div
+        class="profile-crop-frame"
+        [style.width.px]="frameWidth"
+        [style.height.px]="frameHeight"
+        (pointerdown)="comenzar($event)"
+        (pointermove)="arrastrar($event)"
+        (pointerup)="soltar()"
+        (pointercancel)="soltar()"
+      >
+        <img
+          [src]="crop()"
+          alt="Vista previa del recorte"
+          draggable="false"
+          [style.width.px]="ancho()"
+          [style.height.px]="alto()"
+          [style.transform]="transform()"
+        />
+      </div>
+      <label
+        >Acercamiento<input
+          type="range"
+          min="1"
+          max="3"
+          step="0.05"
+          name="zoom"
+          [(ngModel)]="zoom"
+          (ngModelChange)="ajustar()"
+      /></label>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" (click)="cancelarFoto()">Cancelar</button
+        ><button type="button" class="btn btn-primary" (click)="aplicarFoto()">
+          Guardar imagen
+        </button>
+      </div>
+    </section>
+  </div>
+}
+@if (expanded()) {
+  <div class="profile-modal-backdrop" (click)="expanded.set('')">
+    <section
+      class="profile-image-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Imagen de perfil ampliada"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (click)="$event.stopPropagation()"
+    >
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="expanded.set('')"
+        aria-label="Cerrar imagen"
+      >
+        <ps-icon name="close" /></button
+      ><img [src]="expanded()" alt="Imagen del perfil ampliada" />
+    </section>
+  </div>
 }

@@ -1,0 +1,7 @@
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF OBJECT_ID(N'dbo.menu_configuracion',N'U') IS NULL
+ CREATE TABLE dbo.menu_configuracion(id int NOT NULL PRIMARY KEY CHECK(id=1),contenido nvarchar(max) NOT NULL CHECK(ISJSON(contenido)=1),version bigint NOT NULL DEFAULT 0);
+IF NOT EXISTS(SELECT 1 FROM dbo.menu_configuracion WHERE id=1)
+ INSERT INTO dbo.menu_configuracion(id,contenido,version) VALUES(1,N'{"secciones":[{"id":"operacion","titulo":"Espacio de trabajo","orden":1,"activo":true,"opciones":[{"id":"resumen","etiqueta":"Resumen","ruta":"/dashboard","icono":"grid","orden":1,"activo":true,"roles":["ADMIN"]},{"id":"pos","etiqueta":"Punto de venta","ruta":"/pos","icono":"cart","orden":2,"activo":true,"roles":["ADMIN","VENDEDOR"]},{"id":"ventas","etiqueta":"Ventas","ruta":"/ventas","icono":"receipt","orden":3,"activo":true,"roles":["ADMIN","VENDEDOR"]},{"id":"productos","etiqueta":"Productos","ruta":"/productos","icono":"box","orden":4,"activo":true,"roles":["ADMIN"]},{"id":"inventario","etiqueta":"Inventario","ruta":"/inventario","icono":"history","orden":5,"activo":true,"roles":["ADMIN"]}]},{"id":"sistema","titulo":"Administración","orden":2,"activo":true,"opciones":[{"id":"usuarios","etiqueta":"Usuarios","ruta":"/usuarios","icono":"users","orden":1,"activo":true,"roles":["ADMIN"]},{"id":"menu","etiqueta":"Administrar menú","ruta":"/administrar-menu","icono":"settings","orden":2,"activo":true,"roles":["ADMIN"]}]}]}',0);
+COMMIT;

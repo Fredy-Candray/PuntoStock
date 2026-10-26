@@ -1,11 +1,362 @@
-<div class="page-heading"><div><h1>Usuarios</h1><p>Administra el acceso y los perfiles de tu equipo.</p></div><button class="btn btn-primary" (click)="nuevo()" [disabled]="busy()||loading()"><ps-icon name="plus"/> Nuevo usuario</button></div>
-@if(mensaje()){<div class="notice notice-info" role="status">{{mensaje()}}</div>}
-@if(error()){<div class="notice notice-error" role="alert">{{error()}}</div>}
-<div class="summary-grid"><div class="summary-card"><span class="summary-icon"><ps-icon name="users"/></span><div><small>Usuarios registrados</small><strong>{{usuarios().length}}</strong></div></div><div class="summary-card"><span class="summary-icon"><ps-icon name="check"/></span><div><small>Usuarios activos</small><strong>{{activos()}}</strong></div></div><div class="summary-card"><span class="summary-icon"><ps-icon name="shield"/></span><div><small>Administradores activos</small><strong>{{admins()}}</strong></div></div></div>
-<section class="panel"><div class="panel-heading"><h2>Directorio de usuarios</h2><span class="count-label">{{filtrados().length}} resultados</span></div><div class="toolbar admin-filters"><div class="search-field"><ps-icon name="search"/><input aria-label="Buscar usuarios" placeholder="Buscar por nombre, usuario o correo…" [(ngModel)]="buscar"></div><select aria-label="Filtrar por rol" [(ngModel)]="rol"><option value="">Todos los roles</option><option value="ADMIN">Administrador</option><option value="VENDEDOR">Vendedor</option></select><select aria-label="Filtrar por estado" [(ngModel)]="estado"><option value="">Todos los estados</option><option value="ACTIVO">Activos</option><option value="INACTIVO">Inactivos</option></select><button class="btn btn-quiet" (click)="cargar()" [disabled]="loading()||busy()" aria-label="Actualizar usuarios"><ps-icon name="refresh"/></button></div>
-@if(loading()){<div class="loading-line" role="status">Cargando usuarios…</div>}@else{<div class="table-scroll"><table><thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Fecha de alta</th><th>Acciones</th></tr></thead><tbody>@for(u of filtrados();track u.id){<tr><td><div class="cell-primary"><span class="avatar">{{u.nombre.charAt(0).toUpperCase()}}</span><div><strong>{{u.nombre}}</strong><small>{{u.correo||'Sin correo'}} · {{u.username}}</small></div></div></td><td>{{u.roles.includes('ADMIN')?'Administrador':'Vendedor'}}</td><td><span class="stock-tag" [class.empty]="!u.activo">{{u.activo?'Activo':'Inactivo'}}</span></td><td>{{u.fechaCreacion?(u.fechaCreacion|date:'dd/MM/yyyy':'-0600'):'Sin registro'}}</td><td><div class="admin-row-actions"><button class="icon-btn" (click)="ver(u)" [disabled]="busy()" [attr.aria-label]="'Ver '+u.nombre" title="Ver usuario"><ps-icon name="eye"/></button><button class="icon-btn" (click)="editar(u)" [disabled]="busy()" [attr.aria-label]="'Editar '+u.nombre" title="Editar usuario"><ps-icon name="edit"/></button><button class="icon-btn" [class.danger]="u.activo" (click)="confirmar.set(u);error.set('')" [disabled]="busy()||u.username===auth.username()" [attr.aria-label]="(u.activo?'Desactivar ':'Reactivar ')+u.nombre" [title]="u.activo?'Desactivar usuario':'Reactivar usuario'"><ps-icon [name]="u.activo?'logout':'refresh'"/></button></div></td></tr>}@empty{<tr><td colspan="5"><div class="empty-state"><h3>No se encontraron usuarios</h3><p>Cambia la búsqueda o los filtros.</p></div></td></tr>}</tbody></table></div>}</section>
-@if(editor()){
-<div class="admin-overlay"><section class="panel admin-dialog" role="dialog" aria-modal="true" aria-labelledby="user-editor-title" cdkTrapFocus [cdkTrapFocusAutoCapture]="true"><div class="panel-heading"><h2 id="user-editor-title">{{id===null?'Nuevo usuario':'Editar usuario'}}</h2><button class="icon-btn" type="button" (click)="cerrar()" [disabled]="busy()" aria-label="Cerrar formulario"><ps-icon name="close"/></button></div><form #f="ngForm" class="panel-body" (ngSubmit)="guardar()"><fieldset class="admin-fieldset" [disabled]="busy()"><div class="field-grid"><label class="field-wide">Nombre completo<input name="nombre" [(ngModel)]="modelo.nombre" required maxlength="160" autocomplete="name"></label><label>Correo electrónico<input name="correo" type="email" email [(ngModel)]="modelo.correo" required maxlength="254" autocomplete="email"></label><label>Teléfono<input name="telefono" [(ngModel)]="modelo.telefono" maxlength="30" pattern="[+0-9 ()-]*" autocomplete="tel"></label><label>Usuario<input name="username" [(ngModel)]="modelo.username" required maxlength="80" [disabled]="propio()" autocomplete="off" pattern=".*\S.*"></label><label>Contraseña<div class="admin-password"><input name="password" [type]="visible?'text':'password'" [(ngModel)]="modelo.password" [required]="id===null" minlength="12" maxlength="72" autocomplete="new-password" [placeholder]="id===null?'Mínimo 12 caracteres':'Vacía para conservar la actual'"><button type="button" class="icon-btn" (click)="visible=!visible" [attr.aria-label]="visible?'Ocultar contraseña':'Mostrar contraseña'"><ps-icon [name]="visible?'eyeOff':'eye'"/></button></div></label><label>Rol<select name="rol" [(ngModel)]="modelo.rol" [disabled]="propio()" required><option value="VENDEDOR">Vendedor</option><option value="ADMIN">Administrador</option></select></label><label>Estado<select name="activo" [(ngModel)]="modelo.activo" [disabled]="propio()"><option [ngValue]="true">Activo</option><option [ngValue]="false">Inactivo</option></select></label></div></fieldset><p class="field-help">Al cambiar la contraseña, el usuario o los permisos, se cerrarán las sesiones anteriores de esa cuenta.</p>@if(error()){<div class="notice notice-error" role="alert">{{error()}}</div>}<div class="admin-form-actions"><button class="btn btn-secondary" type="button" (click)="cerrar()" [disabled]="busy()">Cancelar</button><button class="btn btn-primary" type="submit" [disabled]="f.invalid||busy()">{{busy()?'Guardando…':'Guardar usuario'}}</button></div></form></section></div>
+<div class="page-heading">
+  <div>
+    <h1>Usuarios</h1>
+    <p>Administra el acceso y los perfiles de tu equipo.</p>
+  </div>
+  <button class="btn btn-primary" (click)="nuevo()" [disabled]="busy() || loading()">
+    <ps-icon name="plus" /> Nuevo usuario
+  </button>
+</div>
+@if (mensaje()) {
+  <div class="notice notice-info" role="status">{{ mensaje() }}</div>
 }
-@if(detalle();as d){<div class="admin-overlay"><section class="panel admin-dialog" role="dialog" aria-modal="true" aria-labelledby="user-detail-title" cdkTrapFocus [cdkTrapFocusAutoCapture]="true"><div class="panel-heading"><h2 id="user-detail-title">Datos del usuario</h2><button class="icon-btn" (click)="cerrar()" aria-label="Cerrar detalle"><ps-icon name="close"/></button></div><div class="panel-body"><div class="admin-user-detail"><span class="avatar">@if(d.fotoPerfil){<img [src]="d.fotoPerfil" alt="Foto del usuario">}@else{ {{d.usuario.nombre.charAt(0)}} }</span><div><h3>{{d.usuario.nombre}}</h3><p>{{d.usuario.username}}</p></div></div><dl class="admin-details"><dt>Correo</dt><dd>{{d.usuario.correo||'Sin registro'}}</dd><dt>Teléfono</dt><dd>{{d.usuario.telefono||'Sin registro'}}</dd><dt>Rol</dt><dd>{{d.usuario.roles.includes('ADMIN')?'Administrador':'Vendedor'}}</dd><dt>Estado</dt><dd>{{d.usuario.activo?'Activo':'Inactivo'}}</dd><dt>Fecha de alta</dt><dd>{{d.usuario.fechaCreacion?(d.usuario.fechaCreacion|date:'dd/MM/yyyy HH:mm':'-0600'):'Sin registro'}}</dd></dl></div></section></div>}
-@if(confirmar();as u){<div class="admin-overlay"><section class="panel admin-dialog" role="alertdialog" aria-modal="true" aria-labelledby="user-state-title" cdkTrapFocus [cdkTrapFocusAutoCapture]="true"><div class="panel-body"><h2 id="user-state-title">{{u.activo?'Desactivar':'Reactivar'}} a {{u.nombre}}</h2><p>{{u.activo?'No podrá ingresar. Sus ventas y movimientos permanecerán en el historial.':'Podrá ingresar nuevamente con sus credenciales.'}}</p>@if(error()){<div class="notice notice-error" role="alert">{{error()}}</div>}<div class="admin-form-actions"><button class="btn btn-secondary" (click)="cerrar()" [disabled]="busy()">Cancelar</button><button class="btn btn-primary" (click)="cambiarEstado()" [disabled]="busy()">{{busy()?'Guardando…':'Confirmar'}}</button></div></div></section></div>}
+@if (error()) {
+  <div class="notice notice-error" role="alert">{{ error() }}</div>
+}
+<div class="summary-grid">
+  <div class="summary-card">
+    <span class="summary-icon"><ps-icon name="users" /></span>
+    <div>
+      <small>Usuarios encontrados</small><strong>{{ total() }}</strong>
+    </div>
+  </div>
+  <div class="summary-card">
+    <span class="summary-icon"><ps-icon name="check" /></span>
+    <div>
+      <small>Activos en esta página</small><strong>{{ activos() }}</strong>
+    </div>
+  </div>
+  <div class="summary-card">
+    <span class="summary-icon"><ps-icon name="shield" /></span>
+    <div>
+      <small>Administradores en esta página</small><strong>{{ admins() }}</strong>
+    </div>
+  </div>
+</div>
+<section class="panel">
+  <div class="panel-heading">
+    <h2>Directorio de usuarios</h2>
+    <span class="count-label">{{ filtrados().length }} resultados</span>
+  </div>
+  <div class="toolbar admin-filters">
+    <div class="search-field">
+      <ps-icon name="search" /><input
+        aria-label="Buscar usuarios"
+        placeholder="Buscar por nombre, usuario o correo…"
+        [(ngModel)]="buscar"
+        (ngModelChange)="buscarEnServidor()"
+      />
+    </div>
+    <select aria-label="Filtrar por rol" [(ngModel)]="rol" (ngModelChange)="buscarEnServidor()">
+      <option value="">Todos los roles</option>
+      <option value="ADMIN">Administrador</option>
+      <option value="VENDEDOR">Vendedor</option></select
+    ><select
+      aria-label="Filtrar por estado"
+      [(ngModel)]="estado"
+      (ngModelChange)="buscarEnServidor()"
+    >
+      <option value="">Todos los estados</option>
+      <option value="ACTIVO">Activos</option>
+      <option value="INACTIVO">Inactivos</option></select
+    ><button
+      class="btn btn-quiet"
+      (click)="cargar()"
+      [disabled]="loading() || busy()"
+      aria-label="Actualizar usuarios"
+    >
+      <ps-icon name="refresh" />
+    </button>
+  </div>
+  @if (loading()) {
+    <div class="loading-line" role="status">Cargando usuarios…</div>
+  } @else {
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Rol</th>
+            <th>Estado</th>
+            <th>Fecha de alta</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of filtrados(); track u.id) {
+            <tr>
+              <td>
+                <div class="cell-primary">
+                  <span class="avatar">{{ u.nombre.charAt(0).toUpperCase() }}</span>
+                  <div>
+                    <strong>{{ u.nombre }}</strong
+                    ><small>{{ u.correo || 'Sin correo' }} · {{ u.username }}</small>
+                  </div>
+                </div>
+              </td>
+              <td>{{ u.roles.includes('ADMIN') ? 'Administrador' : 'Vendedor' }}</td>
+              <td>
+                <span class="stock-tag" [class.empty]="!u.activo">{{
+                  u.activo ? 'Activo' : 'Inactivo'
+                }}</span>
+              </td>
+              <td>
+                {{
+                  u.fechaCreacion
+                    ? (u.fechaCreacion | date: 'dd/MM/yyyy' : '-0600')
+                    : 'Sin registro'
+                }}
+              </td>
+              <td>
+                <div class="admin-row-actions">
+                  <button
+                    class="icon-btn"
+                    (click)="ver(u)"
+                    [disabled]="busy()"
+                    [attr.aria-label]="'Ver ' + u.nombre"
+                    title="Ver usuario"
+                  >
+                    <ps-icon name="eye" /></button
+                  ><button
+                    class="icon-btn"
+                    (click)="editar(u)"
+                    [disabled]="busy()"
+                    [attr.aria-label]="'Editar ' + u.nombre"
+                    title="Editar usuario"
+                  >
+                    <ps-icon name="edit" /></button
+                  ><button
+                    class="icon-btn"
+                    [class.danger]="u.activo"
+                    (click)="confirmar.set(u); error.set('')"
+                    [disabled]="busy() || u.username === auth.username()"
+                    [attr.aria-label]="(u.activo ? 'Desactivar ' : 'Reactivar ') + u.nombre"
+                    [title]="u.activo ? 'Desactivar usuario' : 'Reactivar usuario'"
+                  >
+                    <ps-icon [name]="u.activo ? 'logout' : 'refresh'" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5">
+                <div class="empty-state">
+                  <h3>No se encontraron usuarios</h3>
+                  <p>Cambia la búsqueda o los filtros.</p>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>
+@if (editor()) {
+  <div class="admin-overlay">
+    <section
+      class="panel admin-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="user-editor-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+    >
+      <div class="panel-heading">
+        <h2 id="user-editor-title">{{ id === null ? 'Nuevo usuario' : 'Editar usuario' }}</h2>
+        <button
+          class="icon-btn"
+          type="button"
+          (click)="cerrar()"
+          [disabled]="busy()"
+          aria-label="Cerrar formulario"
+        >
+          <ps-icon name="close" />
+        </button>
+      </div>
+      <form #f="ngForm" class="panel-body" (ngSubmit)="guardar()">
+        <fieldset class="admin-fieldset" [disabled]="busy()">
+          <div class="field-grid">
+            <label class="field-wide"
+              >Nombre completo<input
+                name="nombre"
+                [(ngModel)]="modelo.nombre"
+                required
+                maxlength="160"
+                autocomplete="name" /></label
+            ><label
+              >Correo electrónico<input
+                name="correo"
+                type="email"
+                email
+                [(ngModel)]="modelo.correo"
+                required
+                maxlength="254"
+                autocomplete="email" /></label
+            ><label
+              >Teléfono<input
+                name="telefono"
+                [(ngModel)]="modelo.telefono"
+                maxlength="30"
+                pattern="[+0-9 ()-]*"
+                autocomplete="tel" /></label
+            ><label
+              >Usuario<input
+                name="username"
+                [(ngModel)]="modelo.username"
+                required
+                maxlength="80"
+                [disabled]="propio()"
+                autocomplete="off"
+                pattern=".*\S.*" /></label
+            ><label
+              >Contraseña
+              <div class="admin-password">
+                <input
+                  name="password"
+                  [type]="visible ? 'text' : 'password'"
+                  [(ngModel)]="modelo.password"
+                  [required]="id === null"
+                  minlength="12"
+                  maxlength="72"
+                  autocomplete="new-password"
+                  [placeholder]="
+                    id === null ? 'Mínimo 12 caracteres' : 'Vacía para conservar la actual'
+                  "
+                /><button
+                  type="button"
+                  class="icon-btn"
+                  (click)="visible = !visible"
+                  [attr.aria-label]="visible ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                >
+                  <ps-icon [name]="visible ? 'eyeOff' : 'eye'" />
+                </button></div></label
+            ><label
+              >Rol<select name="rol" [(ngModel)]="modelo.rol" [disabled]="propio()" required>
+                <option value="VENDEDOR">Vendedor</option>
+                <option value="ADMIN">Administrador</option>
+              </select></label
+            ><label
+              >Estado<select name="activo" [(ngModel)]="modelo.activo" [disabled]="propio()">
+                <option [ngValue]="true">Activo</option>
+                <option [ngValue]="false">Inactivo</option>
+              </select></label
+            >
+          </div>
+        </fieldset>
+        <p class="field-help">
+          Al cambiar la contraseña, el usuario o los permisos, se cerrarán las sesiones anteriores
+          de esa cuenta.
+        </p>
+        @if (error()) {
+          <div class="notice notice-error" role="alert">{{ error() }}</div>
+        }
+        <div class="admin-form-actions">
+          <button class="btn btn-secondary" type="button" (click)="cerrar()" [disabled]="busy()">
+            Cancelar</button
+          ><button class="btn btn-primary" type="submit" [disabled]="f.invalid || busy()">
+            {{ busy() ? 'Guardando…' : 'Guardar usuario' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+}
+@if (detalle(); as d) {
+  <div class="admin-overlay">
+    <section
+      class="panel admin-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="user-detail-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+    >
+      <div class="panel-heading">
+        <h2 id="user-detail-title">Datos del usuario</h2>
+        <button class="icon-btn" (click)="cerrar()" aria-label="Cerrar detalle">
+          <ps-icon name="close" />
+        </button>
+      </div>
+      <div class="panel-body">
+        <div class="admin-user-detail">
+          <span class="avatar">
+            @if (d.fotoPerfil) {
+              <img [src]="d.fotoPerfil" alt="Foto del usuario" />
+            } @else {
+              {{ d.usuario.nombre.charAt(0) }}
+            }
+          </span>
+          <div>
+            <h3>{{ d.usuario.nombre }}</h3>
+            <p>{{ d.usuario.username }}</p>
+          </div>
+        </div>
+        <dl class="admin-details">
+          <dt>Correo</dt>
+          <dd>{{ d.usuario.correo || 'Sin registro' }}</dd>
+          <dt>Teléfono</dt>
+          <dd>{{ d.usuario.telefono || 'Sin registro' }}</dd>
+          <dt>Rol</dt>
+          <dd>{{ d.usuario.roles.includes('ADMIN') ? 'Administrador' : 'Vendedor' }}</dd>
+          <dt>Estado</dt>
+          <dd>{{ d.usuario.activo ? 'Activo' : 'Inactivo' }}</dd>
+          <dt>Fecha de alta</dt>
+          <dd>
+            {{
+              d.usuario.fechaCreacion
+                ? (d.usuario.fechaCreacion | date: 'dd/MM/yyyy HH:mm' : '-0600')
+                : 'Sin registro'
+            }}
+          </dd>
+        </dl>
+      </div>
+    </section>
+  </div>
+}
+@if (confirmar(); as u) {
+  <div class="admin-overlay">
+    <section
+      class="panel admin-dialog"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="user-state-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+    >
+      <div class="panel-body">
+        <h2 id="user-state-title">{{ u.activo ? 'Desactivar' : 'Reactivar' }} a {{ u.nombre }}</h2>
+        <p>
+          {{
+            u.activo
+              ? 'No podrá ingresar. Sus ventas y movimientos permanecerán en el historial.'
+              : 'Podrá ingresar nuevamente con sus credenciales.'
+          }}
+        </p>
+        @if (error()) {
+          <div class="notice notice-error" role="alert">{{ error() }}</div>
+        }
+        <div class="admin-form-actions">
+          <button class="btn btn-secondary" (click)="cerrar()" [disabled]="busy()">Cancelar</button
+          ><button class="btn btn-primary" (click)="cambiarEstado()" [disabled]="busy()">
+            {{ busy() ? 'Guardando…' : 'Confirmar' }}
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+}
+
+<div class="pagination" aria-label="Paginación">
+  <button class="btn btn-secondary" (click)="cambiarPagina(-1)" [disabled]="pagina === 0">
+    Anterior</button
+  ><span>Página {{ pagina + 1 }} de {{ paginas() || 1 }} · {{ total() }} resultados</span
+  ><button
+    class="btn btn-secondary"
+    (click)="cambiarPagina(1)"
+    [disabled]="pagina + 1 >= paginas()"
+  >
+    Siguiente
+  </button>
+</div>

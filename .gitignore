@@ -8,3 +8,12 @@
 .vscode/
 .cache/
 *.pem
+
+*.bak
+*.clixml
+.env.*
+!.env.example
+*.pfx
+*.key
+tmp/
+output/
