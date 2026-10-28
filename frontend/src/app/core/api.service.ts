@@ -103,12 +103,15 @@ export interface HistorialVentas {
 export class ApiService {
   private http = inject(HttpClient);
   productosPagina(buscar: string, pagina = 0) {
-    return this.http.get<Pagina<Producto>>('/api/productos/pagina', { params: { buscar, pagina } });
+    return this.http.get<Pagina<Producto>>('/api/productos/pagina', {
+      params: { buscar, pagina, tamano: 6 },
+    });
   }
   movimientosPagina(pagina = 0, desde = '', hasta = '', productoId = '') {
     return this.http.get<Pagina<Movimiento>>('/api/inventario/movimientos/pagina', {
       params: {
         pagina,
+        tamano: 6,
         ...(desde ? { desde } : {}),
         ...(hasta ? { hasta } : {}),
         ...(productoId ? { productoId } : {}),

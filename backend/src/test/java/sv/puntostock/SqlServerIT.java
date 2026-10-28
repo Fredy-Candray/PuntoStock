@@ -51,6 +51,7 @@ class SqlServerIT {
   @Autowired VentaService operaciones;
   @Autowired PasswordEncoder passwords;
   @Autowired Flyway flyway;
+  @Autowired sv.puntostock.service.CajaService caja;
   @LocalServerPort int port;
   long admin, vendedor, otro;
   String clave = "qa-integration-password";
@@ -60,6 +61,15 @@ class SqlServerIT {
     admin = usuario("qa.admin", "ADMIN");
     vendedor = usuario("qa.vendor", "VENDEDOR");
     otro = usuario("qa.other", "VENDEDOR");
+  }
+
+  @BeforeEach
+  void cajaParaLasPruebasDeVenta() {
+    if (!caja.estado().abierta())
+      caja.abrir(
+          new sv.puntostock.application.CajaContratos.Apertura(
+              BigDecimal.ZERO, "Prueba aislada", UUID.randomUUID()),
+          "qa.admin");
   }
 
   long usuario(String nombre, String rol) {
@@ -236,7 +246,7 @@ class SqlServerIT {
                         org.springframework.security.access.prepost.PreAuthorize.class);
               String permiso = auth == null ? "security-global" : auth.value();
               for (var path : info.getPatternValues())
-                if (path.startsWith("/api/"))
+                if (path.startsWith("/api/") && !path.startsWith("/api/caja"))
                   for (var method : info.getMethodsCondition().getMethods())
                     actuales.add(method.name() + "\t" + path + "\t" + permiso);
             });
@@ -564,6 +574,14 @@ class SqlServerIT {
     db.execute("DROP TABLE flyway_schema_history");
     var actual = Flyway.configure().dataSource(url, user, password).baselineVersion("6").load();
     actual.baseline();
+    Flyway.configure().dataSource(url, user, password).target("7").load().migrate();
+    db.update(
+        "INSERT INTO usuarios(username,password_hash,activo) VALUES('historico-caja',?,1)",
+        passwords.encode(clave));
+    db.update(
+        "INSERT INTO ventas(usuario_id,fecha,total,ganancia) SELECT id,SYSUTCDATETIME(),12,3 FROM usuarios WHERE username='historico-caja'");
+    db.update(
+        "UPDATE menu_configuracion SET contenido=REPLACE(contenido,N'Espacio de trabajo',N'Mi tienda') WHERE id=1");
     actual.migrate();
     actual.validate();
     assertEquals(
@@ -573,5 +591,297 @@ class SqlServerIT {
         db.queryForObject(
             "select count(*) from sys.tables where name in ('sesiones','correo_pendiente')",
             Integer.class));
+    assertEquals(
+        1,
+        db.queryForObject(
+            "SELECT COUNT(*) FROM ventas WHERE total=12 AND ganancia=3 AND caja_id IS NULL",
+            Integer.class));
+    assertEquals(0, db.queryForObject("SELECT COUNT(*) FROM cajas", Integer.class));
+    String menu =
+        db.queryForObject("SELECT contenido FROM menu_configuracion WHERE id=1", String.class);
+    assertTrue(menu.contains("Mi tienda"));
+    assertTrue(menu.contains("/caja"));
+    assertEquals(
+        8,
+        db.queryForObject(
+            "SELECT MAX(TRY_CONVERT(int,version)) FROM flyway_schema_history WHERE success=1",
+            Integer.class));
+  }
+
+  private sv.puntostock.application.CajaContratos.Resumen nuevaCaja(String inicial) {
+    var estado = caja.estado();
+    if (estado.abierta()) {
+      var c = caja.detalle(estado.id(), "qa.admin");
+      caja.cerrar(
+          c.id(),
+          new sv.puntostock.application.CajaContratos.Cierre(
+              c.esperado(), "Preparar prueba", UUID.randomUUID(), c.esperado(), c.ventas()),
+          "qa.admin");
+    }
+    return caja.abrir(
+        new sv.puntostock.application.CajaContratos.Apertura(
+            new BigDecimal(inicial), "Nueva prueba", UUID.randomUUID()),
+        "qa.admin");
+  }
+
+  @Test
+  void cajaConciliaEfectivoNetoSinSumarTarjetaNiTransferencia() {
+    var c = nuevaCaja("20.00");
+    long p = producto(10);
+    var solicitud = UUID.randomUUID();
+    var efectivo =
+        new VentaInput(
+            List.of(new Linea(p, 1)),
+            "EFECTIVO",
+            new BigDecimal("10.00"),
+            new BigDecimal("4.00"),
+            "",
+            "",
+            solicitud);
+    var venta = operaciones.vender(efectivo, "qa.vendor");
+    operaciones.vender(efectivo, "qa.vendor");
+    for (String medio : List.of("TARJETA", "TRANSFERENCIA"))
+      operaciones.vender(
+          new VentaInput(
+              List.of(new Linea(p, 1)),
+              medio,
+              null,
+              new BigDecimal("4.00"),
+              "",
+              "",
+              UUID.randomUUID()),
+          "qa.other");
+    var entrada =
+        new sv.puntostock.application.CajaContratos.Movimiento(
+            "ENTRADA", new BigDecimal("5.00"), "Aporte", UUID.randomUUID());
+    caja.mover(c.id(), entrada, "qa.admin");
+    caja.mover(c.id(), entrada, "qa.admin");
+    caja.mover(
+        c.id(),
+        new sv.puntostock.application.CajaContratos.Movimiento(
+            "SALIDA", new BigDecimal("3.00"), "Transporte", UUID.randomUUID()),
+        "qa.admin");
+    var r = caja.detalle(c.id(), "qa.admin");
+    assertEquals(new BigDecimal("26.00"), r.esperado());
+    assertEquals(3, r.ventas());
+    assertEquals(new BigDecimal("4.00"), r.efectivo());
+    assertEquals(new BigDecimal("4.00"), r.tarjeta());
+    assertEquals(new BigDecimal("4.00"), r.transferencia());
+    assertEquals(
+        c.id(),
+        sql.queryForObject("SELECT caja_id FROM ventas WHERE id=?", Long.class, venta.id()));
+    var cierre =
+        new sv.puntostock.application.CajaContratos.Cierre(
+            new BigDecimal("25.00"), "Falta un dólar", UUID.randomUUID(), r.esperado(), r.ventas());
+    var cerrado = caja.cerrar(c.id(), cierre, "qa.admin");
+    assertEquals(new BigDecimal("-1.00"), cerrado.diferencia());
+    assertFalse(caja.estado().abierta());
+    assertEquals(cerrado, caja.cerrar(c.id(), cierre, "qa.admin"));
+    var recuperada = operaciones.vender(efectivo, "qa.vendor");
+    assertEquals(venta.id(), recuperada.id());
+    assertEquals(venta.total(), recuperada.total());
+    assertEquals(venta.cambio(), recuperada.cambio());
+    assertEquals(venta.lineas(), recuperada.lineas());
+    assertEquals(5, caja.movimientos(c.id(), 0, "qa.admin").cantidad());
+    assertThrows(
+        org.springframework.web.server.ResponseStatusException.class,
+        () -> operaciones.vender(cobro(p, UUID.randomUUID(), 1), "qa.vendor"));
+    assertThrows(
+        org.springframework.web.server.ResponseStatusException.class,
+        () ->
+            caja.mover(
+                c.id(),
+                new sv.puntostock.application.CajaContratos.Movimiento(
+                    "ENTRADA", BigDecimal.ONE, "Tarde", UUID.randomUUID()),
+                "qa.admin"));
+  }
+
+  @Test
+  void cajaRechazaCierreDesactualizadoRetiroExcesivoYReutilizacionDeSolicitud() {
+    var c = nuevaCaja("10.00");
+    long p = producto(3);
+    var op =
+        new sv.puntostock.application.CajaContratos.Movimiento(
+            "SALIDA", new BigDecimal("11.00"), "Excesivo", UUID.randomUUID());
+    assertThrows(
+        org.springframework.web.server.ResponseStatusException.class,
+        () -> caja.mover(c.id(), op, "qa.admin"));
+    assertEquals(new BigDecimal("10.00"), caja.detalle(c.id(), "qa.admin").esperado());
+    operaciones.vender(cobro(p, UUID.randomUUID(), 1), "qa.vendor");
+    var cierre =
+        new sv.puntostock.application.CajaContratos.Cierre(
+            new BigDecimal("10.00"), "", UUID.randomUUID(), c.esperado(), c.ventas());
+    assertThrows(
+        org.springframework.web.server.ResponseStatusException.class,
+        () -> caja.cerrar(c.id(), cierre, "qa.admin"));
+    assertTrue(caja.estado().abierta());
+    var entrada =
+        new sv.puntostock.application.CajaContratos.Movimiento(
+            "ENTRADA", BigDecimal.ONE, "Aporte", UUID.randomUUID());
+    caja.mover(c.id(), entrada, "qa.admin");
+    assertThrows(
+        org.springframework.web.server.ResponseStatusException.class,
+        () ->
+            caja.mover(
+                c.id(),
+                new sv.puntostock.application.CajaContratos.Movimiento(
+                    "ENTRADA", new BigDecimal("2.00"), "Aporte", entrada.solicitudId()),
+                "qa.admin"));
+    var r = caja.detalle(c.id(), "qa.admin");
+    assertThrows(
+        org.springframework.web.server.ResponseStatusException.class,
+        () ->
+            caja.cerrar(
+                c.id(),
+                new sv.puntostock.application.CajaContratos.Cierre(
+                    BigDecimal.ZERO, "", UUID.randomUUID(), r.esperado(), r.ventas()),
+                "qa.admin"));
+    assertTrue(caja.estado().abierta());
+  }
+
+  @Test
+  void aperturaConcurrenteSoloPermiteUnaCajaAbierta() throws Exception {
+    var c = nuevaCaja("0.00");
+    caja.cerrar(
+        c.id(),
+        new sv.puntostock.application.CajaContratos.Cierre(
+            BigDecimal.ZERO, "", UUID.randomUUID(), c.esperado(), c.ventas()),
+        "qa.admin");
+    var pool = Executors.newFixedThreadPool(2);
+    var inicio = new CountDownLatch(1);
+    try {
+      var tareas = new ArrayList<Future<Boolean>>();
+      for (int n = 0; n < 2; n++)
+        tareas.add(
+            pool.submit(
+                () -> {
+                  inicio.await();
+                  try {
+                    caja.abrir(
+                        new sv.puntostock.application.CajaContratos.Apertura(
+                            BigDecimal.ZERO, "", UUID.randomUUID()),
+                        "qa.admin");
+                    return true;
+                  } catch (org.springframework.web.server.ResponseStatusException ex) {
+                    assertEquals(409, ex.getStatusCode().value());
+                    return false;
+                  }
+                }));
+      inicio.countDown();
+      int exitos = 0;
+      for (var f : tareas) if (f.get(20, TimeUnit.SECONDS)) exitos++;
+      assertEquals(1, exitos);
+      assertEquals(
+          1, sql.queryForObject("SELECT COUNT(*) FROM cajas WHERE cierre IS NULL", Integer.class));
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
+  @Test
+  void ventaConcurrenteConCierreNoQuedaFueraDelSaldo() throws Exception {
+    var c = nuevaCaja("0.00");
+    long p = producto(2);
+    var pool = Executors.newFixedThreadPool(2);
+    var inicio = new CountDownLatch(1);
+    try {
+      var venta =
+          pool.submit(
+              () -> {
+                inicio.await();
+                try {
+                  operaciones.vender(cobro(p, UUID.randomUUID(), 1), "qa.vendor");
+                  return true;
+                } catch (org.springframework.web.server.ResponseStatusException ex) {
+                  assertEquals(409, ex.getStatusCode().value());
+                  return false;
+                }
+              });
+      var cierre =
+          pool.submit(
+              () -> {
+                inicio.await();
+                try {
+                  caja.cerrar(
+                      c.id(),
+                      new sv.puntostock.application.CajaContratos.Cierre(
+                          BigDecimal.ZERO, "", UUID.randomUUID(), c.esperado(), c.ventas()),
+                      "qa.admin");
+                  return true;
+                } catch (org.springframework.web.server.ResponseStatusException ex) {
+                  assertEquals(409, ex.getStatusCode().value());
+                  return false;
+                }
+              });
+      inicio.countDown();
+      boolean vendida = venta.get(20, TimeUnit.SECONDS), cerrada = cierre.get(20, TimeUnit.SECONDS);
+      assertNotEquals(vendida, cerrada);
+      var r = caja.detalle(c.id(), "qa.admin");
+      assertEquals(vendida ? new BigDecimal("4.00") : new BigDecimal("0.00"), r.esperado());
+      assertEquals(vendida ? 1 : 0, r.ventas());
+      assertEquals(cerrada, r.cierre() != null);
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
+  @Test
+  void cajaHttpValidaPermisosImportesYReintentos() throws Exception {
+    var c = nuevaCaja("5.00");
+    var vendedorLogin = login("qa.vendor");
+    assertEquals(200, get(vendedorLogin, "/api/caja/estado").statusCode());
+    assertEquals(403, get(vendedorLogin, "/api/caja").statusCode());
+    assertEquals(
+        403,
+        enviar(
+                vendedorLogin,
+                "POST",
+                "/api/caja/abrir",
+                "{\"inicial\":0,\"nota\":\"\",\"solicitudId\":\"" + UUID.randomUUID() + "\"}")
+            .statusCode());
+    var l = login("qa.admin");
+    String ruta = "/api/caja/" + c.id() + "/movimientos";
+    for (String importe : List.of("0", "-1", "1.001"))
+      assertEquals(
+          400,
+          enviar(
+                  l,
+                  "POST",
+                  ruta,
+                  "{\"tipo\":\"ENTRADA\",\"monto\":"
+                      + importe
+                      + ",\"motivo\":\"Prueba\",\"solicitudId\":\""
+                      + UUID.randomUUID()
+                      + "\"}")
+              .statusCode());
+    assertEquals(
+        400,
+        enviar(
+                l,
+                "POST",
+                ruta,
+                "{\"tipo\":\"ENTRADA\",\"monto\":1,\"motivo\":\" \",\"solicitudId\":\""
+                    + UUID.randomUUID()
+                    + "\"}")
+            .statusCode());
+    var apertura =
+        new sv.puntostock.application.CajaContratos.Apertura(
+            BigDecimal.ONE, "Reintento", UUID.randomUUID());
+    caja.cerrar(
+        c.id(),
+        new sv.puntostock.application.CajaContratos.Cierre(
+            c.esperado(), "", UUID.randomUUID(), c.esperado(), c.ventas()),
+        "qa.admin");
+    var a = caja.abrir(apertura, "qa.admin");
+    assertEquals(a, caja.abrir(apertura, "qa.admin"));
+    assertThrows(
+        org.springframework.web.server.ResponseStatusException.class,
+        () ->
+            caja.abrir(
+                new sv.puntostock.application.CajaContratos.Apertura(
+                    BigDecimal.TEN, "Reintento", apertura.solicitudId()),
+                "qa.admin"));
+    assertEquals(400, get(l, "/api/caja?pagina=-1").statusCode());
+    assertEquals(404, get(l, "/api/caja/99999999").statusCode());
   }
 }

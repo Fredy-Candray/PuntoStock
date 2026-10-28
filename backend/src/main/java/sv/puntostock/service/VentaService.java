@@ -20,17 +20,20 @@ public class VentaService {
   private final VentaRepository ventas;
   private final UsuarioRepository usuarios;
   private final InventarioService inventario;
+  private final CajaService caja;
 
   public VentaService(
       ProductoRepository productos,
       VentaRepository ventas,
       UsuarioRepository usuarios,
       InventarioService inventario,
+      CajaService caja,
       Clock clock) {
     this.productos = productos;
     this.ventas = ventas;
     this.usuarios = usuarios;
     this.inventario = inventario;
+    this.caja = caja;
     this.clock = clock;
   }
 
@@ -73,7 +76,9 @@ public class VentaService {
         return ticket(anterior.get());
       }
     }
+    long cajaId = caja.paraVenta();
     Venta v = new Venta();
+    v.cajaId = cajaId;
     v.usuario = u;
     v.fecha = LocalDateTime.now(clock);
     v.solicitudId = in.solicitudId();
@@ -219,7 +224,7 @@ public class VentaService {
     var hasta = desde.plusDays(1);
     var page =
         ventas.historial(
-            desde, hasta, usuarioId, org.springframework.data.domain.PageRequest.of(pagina, 20));
+            desde, hasta, usuarioId, org.springframework.data.domain.PageRequest.of(pagina, 6));
     var lista =
         page.getContent().stream()
             .map(

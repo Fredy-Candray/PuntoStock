@@ -17,7 +17,7 @@ Mismo origen que la interfaz. Prefijo `/api`. Los importes son USD, dos decimale
 | POST/PUT /productos y /productos/{id} | ADMIN | sku, nombre, descripcion, precioCompra, precioVenta, fotoUrl, tipo, categoria, marca, unidad, ubicacion, stockMinimo; id |
 | DELETE /productos/{id} | ADMIN | Baja lógica |
 | POST /ventas | Autenticado | lineas[productoId,cantidad,observaciones], metodoPago, recibido, totalEsperado, cliente, referenciaPago, solicitudId UUID |
-| GET /ventas | Autenticado | fecha local opcional, pagina=0; 20 ventas por página, cantidad, paginas y totales por medio. Vendedor solo ve sus ventas |
+| GET /ventas | Autenticado | fecha local opcional, pagina=0; 6 ventas por página, cantidad, paginas y totales por medio. Vendedor solo ve sus ventas |
 | GET /ventas/{id} | Dueño o ADMIN | Comprobante con valores históricos, sin costos |
 | GET /ventas/solicitud/{uuid} | Cuenta de la solicitud | Comprobante de reintento; 404 si aún no se registró |
 | GET/POST /inventario/movimientos | ADMIN | Últimos 200 / productoId, tipo, cantidad, motivo |
@@ -35,3 +35,20 @@ Las páginas nuevas usan `{contenido,cantidad,pagina,paginas}`; el historial de 
 El UUID de venta debe mantenerse al reintentar. El mismo contenido devuelve la venta ya confirmada; otro contenido con ese UUID produce 409. Tras 409 por precios, actualizar y pedir confirmación explícita; tras timeout o desconexión, consultar estado o reintentar la misma solicitud, sin crear otro cobro.
 
 Errores: `{code,message,campos,requestId}`. 400 entrada inválida, 401 acceso inválido, 403 permiso/CSRF, 404 recurso no visible, 409 conflicto, 429 límite temporal (Retry-After), 503 servicio no configurado. Un fallo inesperado no publica SQL ni mensajes de infraestructura; correlacionar con X-Request-ID. El servidor no confirma la existencia de una cuenta en recuperación.
+
+
+## Caja compartida (V8)
+
+| Método y ruta | Permiso | Entrada / resultado |
+|---|---|---|
+| GET /api/caja/estado | Autenticado | abierta e id, sin saldos |
+| GET /api/caja?pagina=0 | ADMIN | Página de 20 resúmenes, más reciente primero |
+| GET /api/caja/{id} | ADMIN | Resumen, totales por medio de pago y cierre |
+| GET /api/caja/{id}/movimientos?pagina=0 | ADMIN | Página de 20 ventas y movimientos manuales |
+| POST /api/caja/abrir | ADMIN | inicial, nota, solicitudId (UUID obligatorio) |
+| POST /api/caja/{id}/movimientos | ADMIN | tipo ENTRADA/SALIDA, monto positivo, motivo, solicitudId |
+| POST /api/caja/{id}/cerrar | ADMIN | contado, nota, solicitudId, esperado y ventas del resumen consultado |
+
+Esperado = inicial + ventas en efectivo + entradas − salidas. No incluye tarjeta ni transferencia. Nota es texto de hasta 500 caracteres (puede ser vacío en apertura/cierre cuadrado); motivo y nota de cierre con diferencia no pueden estar en blanco. Importes de entrada de caja: como máximo 9 enteros y 2 decimales, no negativos, movimiento al menos 0.01. UUID obligatorio para proteger reintentos. Un cierre con saldo o número de ventas desactualizados devuelve 409. Las nuevas ventas POST /api/ventas requieren una caja abierta; el cuerpo y el comprobante permanecen compatibles. Ventas previas con caja nula conservan su historial.
+
+Ver reglas operativas y límites en [Caja](caja.md).

@@ -6,6 +6,7 @@ import { IconComponent } from '../core/icon.component';
 import { TicketComponent } from '../core/ticket.component';
 import { ApiService, AuthService, Cobro, MedioPago, Producto, Ticket } from '../core/api.service';
 import { totalCentavos } from '../core/dinero';
+import { CajaService } from '../core/caja.service';
 interface LineaCarrito {
   producto: Producto;
   cantidad: number;
@@ -19,6 +20,9 @@ interface LineaCarrito {
 })
 export class PosComponent {
   readonly api = inject(ApiService);
+  readonly cajaApi = inject(CajaService);
+  cajaAbierta = signal<boolean | null>(null);
+  errorCaja = signal(false);
   readonly auth = inject(AuthService);
   readonly buscador = viewChild<ElementRef<HTMLInputElement>>('buscador');
   productos = signal<Producto[]>([]);
@@ -27,11 +31,14 @@ export class PosComponent {
   loading = signal(true);
   mensaje = signal('');
   messageError = signal(false);
+  private avisoDeBusqueda = false;
   comprobante = signal<Ticket | null>(null);
   pendiente = signal<Cobro | null>(null);
   buscar = '';
   categoria = '';
   tipo = 'TODOS';
+  readonly limitePagina = 6;
+  pagina = 0;
   metodo: MedioPago = 'EFECTIVO';
   recibido: number | null = null;
   cliente = '';
@@ -79,6 +86,12 @@ export class PosComponent {
     }
   }
   cargar() {
+    this.cajaAbierta.set(null);
+    this.errorCaja.set(false);
+    this.cajaApi.estado().subscribe({
+      next: (c) => this.cajaAbierta.set(c.abierta),
+      error: () => this.errorCaja.set(true),
+    });
     this.loading.set(true);
     this.api.productos().subscribe({
       next: (p) => {
@@ -92,6 +105,7 @@ export class PosComponent {
           ubicacion: x.ubicacion ?? '',
         }));
         this.productos.set(list);
+        this.pagina = Math.min(this.pagina, Math.max(0, this.paginas() - 1));
         if (!this.pendiente())
           this.carrito.update((items) =>
             items.map((l) => {
@@ -132,6 +146,21 @@ export class PosComponent {
         ),
     );
   }
+  paginas() {
+    return Math.ceil(this.filtrados().length / this.limitePagina);
+  }
+  visibles() {
+    const inicio = this.pagina * this.limitePagina;
+    return this.filtrados().slice(inicio, inicio + this.limitePagina);
+  }
+  reiniciarPagina() {
+    this.pagina = 0;
+    this.limpiarAvisoBusqueda();
+  }
+  cambiarPagina(delta: number) {
+    const siguiente = this.pagina + delta;
+    if (siguiente >= 0 && siguiente < this.paginas()) this.pagina = siguiente;
+  }
   servicio(p: Producto) {
     return p.tipo === 'SERVICIO';
   }
@@ -161,11 +190,12 @@ export class PosComponent {
     if (!codigo) return;
     const p = this.productos().find((x) => x.sku.toLowerCase() === codigo);
     if (!p) {
-      this.aviso('No se encontró un artículo o servicio con ese código exacto.', true);
+      this.aviso('No se encontró un artículo o servicio con ese código exacto.', true, true);
       return;
     }
     if (this.agregar(p)) {
       this.buscar = '';
+      this.reiniciarPagina();
       this.buscador()?.nativeElement.focus();
     }
   }
@@ -189,6 +219,7 @@ export class PosComponent {
     if (l) l.cantidad = cantidad;
     else items.push({ producto: p, cantidad: 1, observaciones: '', disponible: true });
     this.carrito.set(items);
+    this.limpiarAvisoBusqueda();
     return true;
   }
   cantidad(id: number, value: unknown) {
@@ -237,7 +268,8 @@ export class PosComponent {
   puedeCobrar() {
     return (
       !!this.pendiente() ||
-      (!!this.carrito().length &&
+      (this.cajaAbierta() === true &&
+        !!this.carrito().length &&
         this.carrito().every(
           (l) =>
             l.disponible &&
@@ -335,7 +367,14 @@ export class PosComponent {
     this.aviso('Venta #' + ticket.id + ' confirmada. Total: $' + ticket.total.toFixed(2) + '.');
     this.cargar();
   }
-  private aviso(texto: string, error = false) {
+  private limpiarAvisoBusqueda() {
+    if (!this.avisoDeBusqueda) return;
+    this.mensaje.set('');
+    this.messageError.set(false);
+    this.avisoDeBusqueda = false;
+  }
+  private aviso(texto: string, error = false, busqueda = false) {
+    this.avisoDeBusqueda = busqueda;
     this.messageError.set(error);
     this.mensaje.set(texto);
   }

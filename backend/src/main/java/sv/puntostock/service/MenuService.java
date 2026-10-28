@@ -55,6 +55,7 @@ public class MenuService {
           new Ruta("/dashboard", "Resumen", List.of("ADMIN")),
           new Ruta("/pos", "Punto de venta", ROLES),
           new Ruta("/ventas", "Ventas", ROLES),
+          new Ruta("/caja", "Caja", List.of("ADMIN")),
           new Ruta("/productos", "Productos", List.of("ADMIN")),
           new Ruta("/inventario", "Inventario", List.of("ADMIN")),
           new Ruta("/usuarios", "Usuarios", List.of("ADMIN")),

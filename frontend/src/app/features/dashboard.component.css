@@ -1,0 +1,17 @@
+.summary-card-interactive {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  transition: border-color 0.15s;
+}
+.summary-card-interactive:hover {
+  border-color: var(--teal);
+}
+.agotados-acciones {
+  display: flex;
+  justify-content: flex-end;
+}
+.agotados-dialog {
+  width: min(680px, calc(100vw - 24px));
+  min-width: 0;
+}

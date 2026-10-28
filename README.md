@@ -20,7 +20,7 @@ Requisitos: JDK 21, Maven >=3.6.3, Node 22.22.3+ o 24.15+ compatible con Angular
 Para alinear la instalación de Java en Windows, ejecuta `pwsh -NoProfile -File scripts/Set-Java21.ps1`. El parámetro `-SystemPath` requiere una terminal como administrador y prioriza JDK 21 en el PATH del sistema. Se conserva un respaldo local en `.cache/local`. Cierra y abre terminales e IDE después del cambio; `java -version`, `javac -version` y `mvn -version` deben mostrar Java 21. En IntelliJ selecciona el SDK `ms-21` del proyecto y ese mismo JDK para Maven. El archivo `.java-version` declara la versión mayor del proyecto.
 
 
-1. Para este entorno Windows, ejecutar `scripts/Initialize-Local.ps1` y después `scripts/Migrate-Local.ps1`. La migración crea y verifica un respaldo antes de adoptar explícitamente la versión histórica 6 y actualizar. Para una base vacía en otro entorno, ejecutar Flyway V1-V7 con una cuenta de migración; la cuenta de aplicación conserva solo DML. No activar baseline automático ni editar migraciones aplicadas. Consultar `docs/estabilidad.md`.
+1. Para este entorno Windows, ejecutar `scripts/Initialize-Local.ps1` y después `scripts/Migrate-Local.ps1`. La migración crea y verifica un respaldo antes de adoptar explícitamente la versión histórica 6 y actualizar. Para una base vacía en otro entorno, ejecutar Flyway V1-V8 con una cuenta de migración; la cuenta de aplicación conserva solo DML. No activar baseline automático ni editar migraciones aplicadas. Consultar `docs/estabilidad.md`.
 2. Configurar las variables en la terminal del backend (sustituir los valores):
 
 ```powershell
@@ -48,7 +48,7 @@ npm start
 
 Con `npm start`, abrir `http://127.0.0.1:14200`; el lanzador configura `/api` al puerto 18080. Un `ng serve` sin el lanzador usa los valores predeterminados 4200/8080 y no representa el entorno local configurado. Para producción servir Angular y `/api` bajo el mismo origen mediante proxy HTTPS. No se necesita CORS en este diseño.
 
-4. Entrar con el administrador inicial, crear productos, registrar entradas `COMPRA` y registrar una venta en POS. Revisar movimiento de salida y ganancia en Dashboard. La sección Administración incluye Usuarios y Administrar menú; las migraciones incluyen la configuración de menú. Consultar `docs/administracion.md`.
+4. Entrar con el administrador inicial, crear productos, registrar entradas `COMPRA`, abrir Caja con el fondo inicial y registrar una venta en POS. Revisar movimiento de salida y ganancia en Dashboard. La sección Administración incluye Usuarios y Administrar menú; las migraciones incluyen la configuración de menú. Consultar `docs/administracion.md`.
 
 ## Seguridad y alcance
 
@@ -66,7 +66,7 @@ Los conteos históricos no describen una ejecución nueva. Para resultados actua
 
 La recuperación de contraseña por Gmail requiere aplicar `database/005_password_recovery.sql` y configurar el remitente con `scripts/Set-LocalMail.ps1`; consultar `docs/recuperacion-contrasena.md`. Sin esa configuración, el envío permanece desactivado. Los enlaces son de un solo uso, vencen en 15 minutos e invalidan las sesiones anteriores al restablecer la contraseña.
 
-Las correcciones y límites pendientes se detallan en `docs/estabilidad.md`. Las devoluciones financieras, impuestos y cierre de caja son capacidades nuevas que requieren reglas comerciales.
+Las correcciones y límites pendientes se detallan en `docs/estabilidad.md`. La caja compartida incluye apertura, entradas/salidas de efectivo, cierre con diferencia e historial; consultar [Caja](docs/caja.md). Requiere la migración V8 y una apertura antes de registrar ventas nuevas. Las devoluciones financieras y los impuestos permanecen fuera de este módulo.
 
 ## Versiones verificadas
 

@@ -29,7 +29,7 @@ Las pantallas administrativas paginan y filtran en servidor. ConsultasService co
 - [Contrato de API](api.md): fuente vigente de rutas, cuerpos, permisos, páginas y errores.
 - [Estabilidad](estabilidad.md): seguridad, migraciones, respaldo, despliegue y límites.
 - [Validación](validacion.md): comandos y alcance de la evidencia, separando antecedentes de pruebas actuales.
-- Flyway V1-V7 es la fuente de migraciones de ejecución. Hibernate valida, no modifica el esquema.
+- Flyway V1-V8 es la fuente de migraciones de ejecución. Hibernate valida, no modifica el esquema.
 - Catálogo, inventario, ventas y perfil tienen servicios y controladores separados. Los contratos validados residen en application. InventarioService participa obligatoriamente en la transacción de VentaService al registrar movimientos de una venta. Una prueba compara las 32 rutas y sus permisos con el contrato previo. No se afirma una arquitectura hexagonal ni microservicios.
 
 La ganancia reportada es bruta y usa costo histórico de catálogo. Una devolución manual de stock no es reembolso ni anulación financiera. No se han definido impuestos, FIFO/promedio, cierres de caja o documentos fiscales.

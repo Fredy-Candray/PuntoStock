@@ -20,14 +20,20 @@ export class InventarioComponent {
   desde = '';
   hasta = '';
   filtroProducto = '';
+  private consultaMovimientos = 0;
   cargarMovimientos() {
+    const consulta = ++this.consultaMovimientos;
     this.api.movimientosPagina(this.pagina, this.desde, this.hasta, this.filtroProducto).subscribe({
       next: (p) => {
+        if (consulta !== this.consultaMovimientos) return;
         this.movimientos.set(p.contenido);
         this.paginas.set(p.paginas);
         this.total.set(p.cantidad);
       },
-      error: () => this.mensaje.set('No se pudo consultar movimientos.'),
+      error: () => {
+        if (consulta === this.consultaMovimientos)
+          this.mensaje.set('No se pudo consultar movimientos.');
+      },
     });
   }
   cambiarPagina(delta: number) {
@@ -37,6 +43,12 @@ export class InventarioComponent {
   filtrar() {
     this.pagina = 0;
     this.cargarMovimientos();
+  }
+  limpiarFiltros() {
+    this.desde = '';
+    this.hasta = '';
+    this.filtroProducto = '';
+    this.filtrar();
   }
   productoId: number | null = null;
   tipo = 'COMPRA';

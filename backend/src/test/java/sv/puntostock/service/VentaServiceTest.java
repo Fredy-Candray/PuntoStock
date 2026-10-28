@@ -18,17 +18,20 @@ class VentaServiceTest {
   VentaRepository ventas = mock(VentaRepository.class);
   MovimientoRepository movimientos = mock(MovimientoRepository.class);
   UsuarioRepository usuarios = mock(UsuarioRepository.class);
+  CajaService caja = mock(CajaService.class);
   VentaService service =
       new VentaService(
           productos,
           ventas,
           usuarios,
           new InventarioService(productos, movimientos, usuarios, Clock.systemUTC()),
+          caja,
           Clock.systemUTC());
   Producto p;
 
   @BeforeEach
   void setup() {
+    when(caja.paraVenta()).thenReturn(1L);
     p = new Producto();
     p.id = 1L;
     p.sku = "SKU";
@@ -48,6 +51,27 @@ class VentaServiceTest {
               v.id = 10L;
               return v;
             });
+  }
+
+  @Test
+  void cajaCerradaNoRegistraVentaYReintentoConfirmadoNoNecesitaCajaAbierta() {
+    var input = cobro("EFECTIVO", "10.00", "8.00", UUID.randomUUID());
+    when(caja.paraVenta())
+        .thenThrow(new ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT));
+    assertThrows(ResponseStatusException.class, () -> service.vender(input, "vendedor"));
+    verify(ventas, never()).save(any());
+    assertEquals(5, p.stock);
+    doReturn(7L).when(caja).paraVenta();
+    var resultado = service.vender(input, "vendedor");
+    var captor = ArgumentCaptor.forClass(Venta.class);
+    verify(ventas).save(captor.capture());
+    assertEquals(7L, captor.getValue().cajaId);
+    when(ventas.findByUsuarioIdAndSolicitudId(1L, input.solicitudId()))
+        .thenReturn(Optional.of(captor.getValue()));
+    when(caja.paraVenta())
+        .thenThrow(new ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT));
+    assertEquals(resultado, service.vender(input, "vendedor"));
+    verify(ventas, times(1)).save(any());
   }
 
   @Test

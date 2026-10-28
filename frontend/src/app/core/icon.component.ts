@@ -45,6 +45,7 @@ export class IconComponent {
     plus: 'M12 5v14M5 12h14',
     minus: 'M5 12h14',
     close: 'm6 6 12 12M6 18 18 6',
+    eraser: 'm3 14 11-11 8 8-10 10H10L3 14ZM9 8l8 8M12 21h10',
     edit: 'm14 5 5 5M4 20l5-1L21 7a2.8 2.8 0 0 0-4-4L5 15l-1 5Z',
     trash: 'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7',
     refresh: 'M20 8a9 9 0 0 0-15-3L2 8m0-5v5h5M4 16a9 9 0 0 0 15 3l3-3m0 5v-5h-5',

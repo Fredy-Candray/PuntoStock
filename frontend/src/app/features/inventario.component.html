@@ -1,7 +1,6 @@
 <div class="page-heading">
   <div>
-    <span class="overline">EXISTENCIAS</span>
-    <h1 style="margin-top: 8px">Cada movimiento, registrado.</h1>
+    <h1>Existencias</h1>
     <p>Controla las entradas, las salidas y los ajustes de tu inventario.</p>
   </div>
   <button class="btn btn-secondary" (click)="cargar()" [disabled]="busy()">
@@ -90,17 +89,32 @@
       </div>
       <ps-icon name="history" />
     </div>
-    <div class="toolbar">
+    <div class="toolbar inventory-filters">
       <label>Desde<input type="date" [(ngModel)]="desde" /></label
-      ><label>Hasta<input type="date" [(ngModel)]="hasta" /></label
-      ><label
-        >Producto<select [(ngModel)]="filtroProducto">
-          <option value="">Todos</option>
-          @for (p of productos(); track p.id) {
-            <option [value]="p.id">{{ p.nombre }}</option>
-          }
-        </select></label
-      ><button class="btn btn-secondary" (click)="filtrar()">Filtrar</button>
+      ><label>Hasta<input type="date" [(ngModel)]="hasta" /></label>
+      <div class="inventory-product-filter">
+        <label
+          >Producto<select [(ngModel)]="filtroProducto">
+            <option value="">Todos</option>
+            @for (p of productos(); track p.id) {
+              <option [value]="p.id">{{ p.nombre }}</option>
+            }
+          </select>
+        </label>
+        <button
+          type="button"
+          class="icon-btn"
+          title="Limpiar filtros"
+          aria-label="Limpiar filtros"
+          (click)="limpiarFiltros()"
+          [disabled]="busy()"
+        >
+          <ps-icon name="eraser" />
+        </button>
+      </div>
+      <div class="page-actions">
+        <button type="button" class="btn btn-secondary" (click)="filtrar()">Filtrar</button>
+      </div>
     </div>
     <div class="table-scroll">
       <table class="inventory-table">
@@ -150,19 +164,17 @@
         </tbody>
       </table>
     </div>
-    <div class="panel-footer">Hora de El Salvador · Los movimientos conservan su historial.</div>
+    <div class="pagination" aria-label="Paginación del historial de inventario">
+      <button class="btn btn-secondary" (click)="cambiarPagina(-1)" [disabled]="pagina === 0">
+        Anterior</button
+      ><span>Página {{ pagina + 1 }} de {{ paginas() || 1 }} · {{ total() }} resultados</span
+      ><button
+        class="btn btn-secondary"
+        (click)="cambiarPagina(1)"
+        [disabled]="pagina + 1 >= paginas()"
+      >
+        Siguiente
+      </button>
+    </div>
   </section>
-</div>
-
-<div class="pagination" aria-label="Paginación">
-  <button class="btn btn-secondary" (click)="cambiarPagina(-1)" [disabled]="pagina === 0">
-    Anterior</button
-  ><span>Página {{ pagina + 1 }} de {{ paginas() || 1 }} · {{ total() }} resultados</span
-  ><button
-    class="btn btn-secondary"
-    (click)="cambiarPagina(1)"
-    [disabled]="pagina + 1 >= paginas()"
-  >
-    Siguiente
-  </button>
 </div>

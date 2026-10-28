@@ -1,0 +1,100 @@
+:host {
+  display: block;
+}
+.caja-referencia {
+  display: block;
+  margin-top: 4px;
+}
+.caja-apertura,
+.caja-resumen,
+.caja-acciones,
+.caja-registros,
+.caja-historial {
+  margin-bottom: 24px;
+}
+.caja-form {
+  display: grid;
+  gap: 20px;
+}
+.caja-form label:not(.caja-confirmacion) {
+  display: grid;
+  gap: 8px;
+}
+.caja-form textarea {
+  min-height: 85px;
+  resize: vertical;
+}
+.caja-acciones {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.caja-totales {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 16px;
+}
+.caja-totales > div {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: grid;
+  gap: 10px;
+}
+.caja-totales strong {
+  font-size: 1.35rem;
+  overflow-wrap: anywhere;
+}
+.caja-totales span,
+.caja-no-efectivo {
+  font-size: 0.9rem;
+}
+.caja-no-efectivo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  margin: 18px 0 8px;
+}
+.caja-nota {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 600px;
+  margin: 6px 0;
+}
+.caja-resultado {
+  border-top: 1px solid var(--line);
+  margin-top: 24px;
+  padding-top: 24px;
+}
+.caja-confirmacion {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+.caja-confirmacion input {
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+.field-help {
+  margin: 14px 0;
+}
+@media (max-width: 800px) {
+  .caja-acciones {
+    grid-template-columns: 1fr;
+  }
+  .caja-totales {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pagination {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 400px) {
+  .caja-totales {
+    grid-template-columns: 1fr;
+  }
+}

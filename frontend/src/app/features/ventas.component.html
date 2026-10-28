@@ -1,8 +1,7 @@
 <div class="sales-screen no-print">
   <div class="page-heading">
     <div>
-      <span class="overline">VENTAS REGISTRADAS</span>
-      <h1 style="margin-top: 8px">
+      <h1>
         {{ auth.admin() ? 'Las ventas de tu negocio.' : 'Tus ventas, en un solo lugar.' }}
       </h1>
       <p>
@@ -129,7 +128,7 @@
         </table>
       </div>
       <div class="panel-footer sales-pagination">
-        <span>Página {{ d.paginas ? d.pagina + 1 : 0 }} de {{ d.paginas }}</span>
+        <span>Página {{ d.paginas ? d.pagina + 1 : 0 }} de {{ d.paginas }} · 6 por página</span>
         <div>
           <button
             class="btn btn-secondary btn-small"

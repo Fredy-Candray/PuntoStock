@@ -12,6 +12,9 @@ public class Venta {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   public Long id;
 
+  @Column(name = "caja_id")
+  public Long cajaId;
+
   @Column(nullable = false, columnDefinition = "datetime2(6)")
   public LocalDateTime fecha;
 

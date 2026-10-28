@@ -1,0 +1,411 @@
+<div class="page-heading">
+  <div>
+    <h1>Caja de la tienda</h1>
+    <p>Apertura, movimientos y cierre de la caja compartida.</p>
+  </div>
+  <button
+    class="btn btn-secondary"
+    (click)="cargar(seleccion()?.id)"
+    [disabled]="loading() || busy()"
+  >
+    <ps-icon name="refresh" /> Actualizar
+  </button>
+</div>
+@if (error()) {
+  <div class="notice notice-error" role="alert">{{ error() }}</div>
+}
+@if (mensaje()) {
+  <div class="notice notice-info" role="status">{{ mensaje() }}</div>
+}
+@if (pendiente(); as op) {
+  <div class="notice notice-warning" role="status">
+    <div>
+      <strong>Operación pendiente de confirmación</strong>
+      <p>Se conserva la solicitud para comprobar el resultado sin registrarla dos veces.</p>
+      <button class="btn btn-secondary" (click)="enviar(op)" [disabled]="busy() || loading()">
+        {{ busy() ? 'Comprobando…' : 'Reintentar la misma solicitud' }}
+      </button>
+    </div>
+  </div>
+}
+@if (loading()) {
+  <div class="loading-line" role="status"><span class="spinner"></span> Consultando caja…</div>
+}
+@if (!actualId()) {
+  <section class="panel caja-apertura">
+    <div class="panel-heading">
+      <div>
+        <h2>Abrir caja</h2>
+        <p>Cuenta el efectivo disponible para comenzar. Las ventas requieren una caja abierta.</p>
+      </div>
+      <span class="movement-label">Cerrada</span>
+    </div>
+    <form class="panel-body caja-form" #ap="ngForm" (ngSubmit)="abrir()">
+      <label
+        >Efectivo inicial · USD<input
+          type="number"
+          name="inicial"
+          min="0"
+          max="999999999.99"
+          step="0.01"
+          [(ngModel)]="inicial"
+          required
+          [disabled]="bloqueado()"
+          placeholder="0.00"
+      /></label>
+      <label
+        >Observación · opcional<textarea
+          name="notaApertura"
+          [(ngModel)]="notaApertura"
+          maxlength="500"
+          [disabled]="bloqueado()"
+          placeholder="Por ejemplo: fondo para dar cambio"
+        ></textarea>
+      </label>
+      <button class="btn btn-primary" [disabled]="bloqueado() || ap.invalid || !dinero(inicial)">
+        <ps-icon name="plus" /> Abrir caja
+      </button>
+    </form>
+  </section>
+} @else {
+  <div class="notice notice-info">
+    La caja del día está abierta. Las ventas se registran en ella.
+    @if (seleccion()?.id !== actualId()) {
+      <button class="btn btn-quiet" (click)="cargar(actualId()!)" [disabled]="loading() || busy()">
+        Ver caja abierta
+      </button>
+    }
+  </div>
+}
+@if (seleccion(); as c) {
+  <section class="panel caja-resumen">
+    <div class="panel-heading">
+      <div>
+        <h2>
+          Caja del día · {{ c.apertura | date: 'dd/MM/yyyy' : '-0600' }} ·
+          {{ c.cierre ? 'Cerrada' : 'Abierta' }}
+        </h2>
+        <p>Apertura: {{ c.apertura | date: 'dd/MM/yyyy HH:mm' : '-0600' }} · {{ c.abiertoPor }}</p>
+      </div>
+    </div>
+    <div class="panel-body">
+      @if (c.notaApertura) {
+        <p class="caja-nota">{{ c.notaApertura }}</p>
+      }
+      <div class="caja-totales">
+        <div>
+          <span>Fondo inicial</span><strong>{{ c.inicial | currency: 'USD' }}</strong>
+        </div>
+        <div>
+          <span>Ventas en efectivo</span><strong>{{ c.efectivo | currency: 'USD' }}</strong>
+        </div>
+        <div>
+          <span>Entradas manuales</span><strong>{{ c.entradas | currency: 'USD' }}</strong>
+        </div>
+        <div>
+          <span>Salidas manuales</span><strong>{{ c.salidas | currency: 'USD' }}</strong>
+        </div>
+        <div class="caja-esperado">
+          <span>Efectivo esperado</span><strong>{{ c.esperado | currency: 'USD' }}</strong>
+        </div>
+      </div>
+      <p class="field-help">
+        Fondo inicial + ventas en efectivo + entradas − salidas. Se suma el total de la venta,
+        descontando el cambio entregado al cliente.
+      </p>
+      <div class="caja-no-efectivo">
+        <span
+          >Tarjeta: <strong>{{ c.tarjeta | currency: 'USD' }}</strong></span
+        ><span
+          >Transferencia: <strong>{{ c.transferencia | currency: 'USD' }}</strong></span
+        ><span>{{ c.ventas }} ventas</span>
+      </div>
+      <p class="field-help">
+        Tarjeta y transferencia no forman parte del efectivo que debes contar.
+      </p>
+      @if (c.cierre) {
+        <div class="caja-resultado" role="status">
+          <h3>Cierre del {{ c.cierre | date: 'dd/MM/yyyy HH:mm' : '-0600' }}</h3>
+          <p>Registrado por {{ c.cerradoPor }}</p>
+          <div class="caja-no-efectivo">
+            <span
+              >Efectivo contado: <strong>{{ c.contado | currency: 'USD' }}</strong></span
+            ><span
+              >Diferencia:
+              <strong
+                [class.quantity-out]="c.diferencia! < 0"
+                [class.quantity-in]="c.diferencia! > 0"
+                >{{ c.diferencia | currency: 'USD' }}</strong
+              >
+              ·
+              {{
+                c.diferencia! < 0 ? 'Faltante' : c.diferencia! > 0 ? 'Sobrante' : 'Cuadrada'
+              }}</span
+            >
+          </div>
+          <p class="caja-nota">{{ c.notaCierre }}</p>
+          <small
+            >Este cierre queda registrado y no se edita. Inicia una nueva jornada de caja para
+            continuar vendiendo.</small
+          >
+        </div>
+      }
+    </div>
+  </section>
+  @if (!c.cierre) {
+    <div class="caja-acciones">
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Entrada o salida de efectivo</h2>
+            <p>Para aportes de dinero, retiros o pagos desde la caja.</p>
+          </div>
+        </div>
+        <form class="panel-body caja-form" #mv="ngForm" (ngSubmit)="mover()">
+          <label
+            >Movimiento<select name="tipo" [(ngModel)]="tipo" [disabled]="bloqueado()">
+              <option value="ENTRADA">Entrada de efectivo</option>
+              <option value="SALIDA">Salida de efectivo</option>
+            </select></label
+          >
+          <label
+            >Importe · USD<input
+              name="monto"
+              type="text"
+              psImporteCentavos
+              aria-label="Importe · USD"
+              aria-describedby="ayuda-importe-caja"
+              [(ngModel)]="monto"
+              required
+              [disabled]="bloqueado()"
+            /><span class="field-help" id="ayuda-importe-caja"
+              >Escribe solo números: 1 = $0.01 · 100 = $1.00.</span
+            ></label
+          >
+          <label
+            >Motivo<textarea
+              name="motivo"
+              [(ngModel)]="motivo"
+              required
+              maxlength="500"
+              [disabled]="bloqueado()"
+              placeholder="Describe de dónde viene o para qué se retira el dinero"
+            ></textarea>
+          </label>
+          <p class="field-help">
+            Las ventas se suman automáticamente. No las registres aquí otra vez. Una salida de caja
+            no anula ni reembolsa una venta.
+          </p>
+          <button
+            class="btn btn-primary"
+            [disabled]="bloqueado() || mv.invalid || !dinero(monto, true) || !motivo.trim()"
+          >
+            Registrar movimiento
+          </button>
+        </form>
+      </section>
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Cerrar caja</h2>
+            <p>Termina los cobros y cuenta únicamente el efectivo físico.</p>
+          </div>
+        </div>
+        <form class="panel-body caja-form" #ci="ngForm" (ngSubmit)="cerrar()">
+          <label
+            >Efectivo contado · USD<input
+              name="contado"
+              type="number"
+              min="0"
+              max="999999999.99"
+              step="0.01"
+              [(ngModel)]="contado"
+              (ngModelChange)="confirmar = false"
+              required
+              [disabled]="bloqueado()"
+          /></label>
+          @if (dinero(contado)) {
+            <div class="change-display">
+              <span>{{
+                diferencia() < 0 ? 'Faltante' : diferencia() > 0 ? 'Sobrante' : 'Diferencia'
+              }}</span
+              ><strong>{{ diferencia() | currency: 'USD' }}</strong>
+            </div>
+          }
+          <label
+            >Observación {{ diferencia() !== 0 ? '· obligatoria por la diferencia' : '· opcional'
+            }}<textarea
+              name="notaCierre"
+              [(ngModel)]="notaCierre"
+              [required]="diferencia() !== 0"
+              maxlength="500"
+              [disabled]="bloqueado()"
+            ></textarea>
+          </label>
+          <label class="caja-confirmacion"
+            ><input
+              type="checkbox"
+              name="confirmar"
+              [(ngModel)]="confirmar"
+              [disabled]="bloqueado()"
+            /><span
+              >Revisé el resumen y el efectivo contado. Confirmo el cierre de esta caja.</span
+            ></label
+          >
+          <button
+            class="btn btn-primary"
+            [disabled]="
+              bloqueado() ||
+              ci.invalid ||
+              !dinero(contado) ||
+              !confirmar ||
+              (diferencia() !== 0 && !notaCierre.trim())
+            "
+          >
+            Confirmar cierre
+          </button>
+        </form>
+      </section>
+    </div>
+  }
+  <section class="panel caja-registros">
+    <div class="panel-heading">
+      <div>
+        <h2>Movimientos del {{ c.apertura | date: 'dd/MM/yyyy' : '-0600' }}</h2>
+        <p>Ventas y movimientos manuales, con fecha y responsable.</p>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Detalle</th>
+            <th>Responsable</th>
+            <th>Medio</th>
+            <th>Importe</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (m of registros()?.contenido; track m.id) {
+            <tr>
+              <td>{{ m.fecha | date: 'dd/MM/yy HH:mm' : '-0600' }}</td>
+              <td>
+                <strong>{{
+                  m.tipo === 'VENTA' ? 'Venta' : m.tipo === 'ENTRADA' ? 'Entrada' : 'Salida'
+                }}</strong>
+                <div class="caja-nota">{{ m.motivo }}</div>
+              </td>
+              <td>{{ m.usuario }}</td>
+              <td>
+                {{
+                  m.metodoPago === 'EFECTIVO'
+                    ? 'Efectivo'
+                    : m.metodoPago === 'TARJETA'
+                      ? 'Tarjeta'
+                      : 'Transferencia'
+                }}
+              </td>
+              <td [class.quantity-out]="m.monto < 0">{{ m.monto | currency: 'USD' }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5">
+                <div class="empty-state">Esta caja todavía no tiene movimientos.</div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (registros(); as r) {
+      <div class="pagination">
+        <button
+          class="btn btn-secondary"
+          (click)="movimientos(r.pagina - 1)"
+          [disabled]="loading() || busy() || r.pagina === 0"
+        >
+          Anterior</button
+        ><span
+          >{{ r.cantidad }} movimientos · Página {{ r.pagina + 1 }} de {{ r.paginas || 1 }}</span
+        ><button
+          class="btn btn-secondary"
+          (click)="movimientos(r.pagina + 1)"
+          [disabled]="loading() || busy() || r.pagina + 1 >= r.paginas"
+        >
+          Siguiente
+        </button>
+      </div>
+    }
+  </section>
+}
+<section class="panel caja-historial">
+  <div class="panel-heading">
+    <div>
+      <h2>Historial de caja</h2>
+      <p>
+        Las ventas anteriores a esta función permanecen en Ventas y no se asignan a una apertura
+        nueva.
+      </p>
+    </div>
+  </div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Jornada</th>
+          <th>Hora de apertura</th>
+          <th>Estado</th>
+          <th>Esperado</th>
+          <th>Contado</th>
+          <th>Diferencia</th>
+          <th>Detalle</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (c of historial()?.contenido; track c.id) {
+          <tr>
+            <td>
+              <strong>{{ c.apertura | date: 'dd/MM/yyyy' : '-0600' }}</strong>
+              <small class="muted caja-referencia">Referencia #{{ c.id }}</small>
+            </td>
+            <td>{{ c.apertura | date: 'HH:mm' : '-0600' }}</td>
+            <td>{{ c.cierre ? 'Cerrada' : 'Abierta' }}</td>
+            <td>{{ c.esperado | currency: 'USD' }}</td>
+            <td>{{ c.contado === null ? '—' : (c.contado | currency: 'USD') }}</td>
+            <td>{{ c.diferencia === null ? '—' : (c.diferencia | currency: 'USD') }}</td>
+            <td>
+              <button class="btn btn-quiet" (click)="cargar(c.id)" [disabled]="loading() || busy()">
+                Ver detalle
+              </button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7">
+              <div class="empty-state">Abre tu primera caja para comenzar el registro.</div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  @if (historial(); as h) {
+    <div class="pagination">
+      <button
+        class="btn btn-secondary"
+        (click)="cargar(seleccion()?.id, pagina - 1)"
+        [disabled]="loading() || busy() || pagina === 0"
+      >
+        Anterior</button
+      ><span>{{ h.cantidad }} jornadas · Página {{ pagina + 1 }} de {{ h.paginas || 1 }}</span
+      ><button
+        class="btn btn-secondary"
+        (click)="cargar(seleccion()?.id, pagina + 1)"
+        [disabled]="loading() || busy() || pagina + 1 >= h.paginas"
+      >
+        Siguiente
+      </button>
+    </div>
+  }
+</section>

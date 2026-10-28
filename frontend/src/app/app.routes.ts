@@ -22,6 +22,11 @@ export const routes: Routes = [
     loadComponent: () => import('./features/pos.component').then((m) => m.PosComponent),
   },
   {
+    path: 'caja',
+    canActivate: [authGuard, adminGuard, menuGuard],
+    loadComponent: () => import('./features/caja.component').then((m) => m.CajaComponent),
+  },
+  {
     path: 'ventas',
     canActivate: [authGuard, menuGuard],
     loadComponent: () => import('./features/ventas.component').then((m) => m.VentasComponent),

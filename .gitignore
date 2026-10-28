@@ -17,3 +17,6 @@
 *.key
 tmp/
 output/
+
+# Archivo de trabajo local con el catálogo y registros del negocio.
+/CONTROL DE VENTAS.xlsx

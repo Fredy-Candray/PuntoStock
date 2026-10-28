@@ -1,4 +1,16 @@
 <div class="pos-screen no-print">
+  @if (cajaAbierta() === false) {
+    <div class="notice notice-warning" role="status">
+      <span>La caja está cerrada. El administrador debe abrirla antes de registrar ventas.</span>
+      @if (auth.admin()) {
+        <a class="btn btn-secondary" routerLink="/caja">Abrir caja</a>
+      }
+    </div>
+  } @else if (errorCaja()) {
+    <div class="notice notice-error" role="status">
+      No se pudo comprobar la caja. Actualiza para volver a consultar antes de cobrar.
+    </div>
+  }
   @if (mensaje()) {
     <div
       class="notice"
@@ -30,8 +42,7 @@
   }
   <div class="page-heading pos-heading">
     <div>
-      <span class="overline">PUNTO DE VENTA</span>
-      <h1 style="margin-top: 8px">Tu papelería, lista para vender.</h1>
+      <h1>Tu papelería, lista para vender.</h1>
     </div>
     <div class="page-actions pos-actions">
       <a class="btn btn-secondary" routerLink="/ventas"><ps-icon name="receipt" /> Ver ventas</a
@@ -57,17 +68,26 @@
               aria-label="Buscar o escanear código"
               placeholder="Escanea un código y presiona Enter, o busca por nombre…"
               [(ngModel)]="buscar"
+              (ngModelChange)="reiniciarPagina()"
               (keydown.enter)="agregarCodigo($event)"
               [disabled]="bloqueado()"
               autocomplete="off"
             />
           </div>
           <div class="pos-filter-row">
-            <select aria-label="Tipo de catálogo" [(ngModel)]="tipo">
+            <select
+              aria-label="Tipo de catálogo"
+              [(ngModel)]="tipo"
+              (ngModelChange)="reiniciarPagina()"
+            >
               <option value="TODOS">Artículos y servicios</option>
               <option value="PRODUCTO">Artículos</option>
               <option value="SERVICIO">Servicios</option></select
-            ><select aria-label="Categoría del catálogo" [(ngModel)]="categoria">
+            ><select
+              aria-label="Categoría del catálogo"
+              [(ngModel)]="categoria"
+              (ngModelChange)="reiniciarPagina()"
+            >
               <option value="">Todas las categorías</option>
               @for (c of categorias(); track c) {
                 <option [value]="c">{{ c }}</option>
@@ -91,7 +111,7 @@
                 </tr>
               </thead>
               <tbody>
-                @for (p of filtrados(); track p.id) {
+                @for (p of visibles(); track p.id) {
                   <tr>
                     <td>
                       <div class="cell-primary">
@@ -152,10 +172,29 @@
               </tbody>
             </table>
           </div>
+          <nav class="pagination pos-pagination" aria-label="Paginación del catálogo">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="cambiarPagina(-1)"
+              [disabled]="pagina === 0"
+            >
+              Anterior
+            </button>
+            <span
+              >Página {{ pagina + 1 }} de {{ paginas() || 1 }} · {{ filtrados().length }} resultados
+              · {{ limitePagina }} por página</span
+            >
+            <button
+              type="button"
+              class="btn btn-secondary"
+              (click)="cambiarPagina(1)"
+              [disabled]="pagina + 1 >= paginas()"
+            >
+              Siguiente
+            </button>
+          </nav>
         }
-        <div class="panel-footer">
-          El lector de códigos funciona como teclado: coloca el cursor en la búsqueda y escanea.
-        </div>
       </section>
     </div>
     <aside class="panel cart-panel" aria-label="Venta actual">
