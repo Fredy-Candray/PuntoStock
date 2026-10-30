@@ -1,0 +1,76 @@
+.pos-add-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pos-add-unit {
+  min-width: 100px;
+  justify-content: center;
+}
+
+@media (max-width: 700px) {
+  .pos-table,
+  .pos-table tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .pos-table thead {
+    display: none;
+  }
+  .pos-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .pos-table tbody td {
+    display: block;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+    white-space: normal;
+  }
+  .pos-table .pos-product-cell,
+  .pos-table td.text-right,
+  .pos-table td[colspan] {
+    grid-column: 1 / -1;
+  }
+  .pos-table .cell-primary > div {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .pos-stock-cell::before {
+    content: 'Disponible: ';
+    font-size: 12px;
+  }
+  .pos-price-cell {
+    text-align: right;
+  }
+  .pos-add-actions {
+    flex-wrap: wrap;
+  }
+  .pos-add-actions .btn {
+    max-width: 100%;
+    white-space: normal;
+  }
+  .pos-pagination {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .pos-pagination span {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    white-space: normal;
+  }
+  .pos-pagination .btn {
+    min-width: 0;
+  }
+}

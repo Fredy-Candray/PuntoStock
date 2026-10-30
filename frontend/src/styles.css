@@ -535,6 +535,10 @@ small {
   font-size: 13px;
   box-shadow: 0 6px 14px #087f7615;
 }
+.login-submit.login-recovery-submit {
+  justify-content: center;
+  text-align: center;
+}
 .login-submit:disabled {
   opacity: 1;
   background: #70aaa0;
@@ -910,6 +914,79 @@ small {
 }
 .table-scroll {
   overflow-x: auto;
+}
+@media (max-width: 700px) {
+  html,
+  body {
+    height: auto;
+    overflow-y: auto;
+  }
+  .app-layout,
+  .workspace,
+  .workspace-content {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .table-scroll:has(.responsive-table),
+  .table-scroll:has(.pos-table) {
+    overflow: visible;
+    max-height: none;
+    touch-action: pan-y pinch-zoom;
+  }
+  .responsive-table,
+  .responsive-table tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+  }
+  .responsive-table thead {
+    display: none;
+  }
+  .responsive-table tbody tr {
+    display: block;
+    padding: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .responsive-table tbody td {
+    display: grid;
+    grid-template-columns: minmax(90px, 35%) minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    padding: 7px 0;
+    border: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+  .responsive-table td[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .responsive-table tbody td:first-child,
+  .responsive-table tbody td[colspan] {
+    display: block;
+  }
+  .responsive-table tbody td:first-child::before {
+    display: none;
+  }
+  .responsive-table .cell-primary > div {
+    min-width: 0;
+  }
+  .responsive-table .table-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  .pagination {
+    flex-wrap: wrap;
+    gap: 10px;
+    text-align: center;
+  }
+  .pagination > span {
+    white-space: normal;
+  }
 }
 table {
   width: 100%;
@@ -3411,6 +3488,58 @@ ps-user-menu {
   }
   .admin-details {
     grid-template-columns: 90px minmax(0, 1fr);
+  }
+}
+ps-user-menu.mobile-user-menu {
+  display: none;
+}
+@media (max-width: 760px) {
+  .sidebar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px 8px;
+  }
+  .sidebar .sidebar-brand {
+    grid-column: 1;
+    grid-row: 1;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+  .sidebar .sidebar-bottom {
+    position: static;
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0;
+    gap: 4px;
+  }
+  ps-user-menu.mobile-user-menu {
+    display: block;
+  }
+  .mobile-user-menu .user-menu-trigger {
+    gap: 5px;
+    padding: 4px;
+  }
+  .mobile-user-menu .account-text {
+    max-width: 95px;
+  }
+  .mobile-user-menu .account-text small {
+    display: none;
+  }
+  .mobile-user-menu .account-text strong {
+    font-size: 11px;
+  }
+  .mobile-user-menu .avatar {
+    width: 30px;
+    height: 30px;
+  }
+  .sidebar .side-nav {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  .workspace .workspace-header {
+    display: none;
   }
 }
 .workspace-header {

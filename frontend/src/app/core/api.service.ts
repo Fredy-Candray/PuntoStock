@@ -39,8 +39,19 @@ export interface Producto {
   unidad: string;
   ubicacion: string;
   stockMinimo: number;
+  caja?: CajaProducto | null;
 }
-export type ProductoInput = Omit<Producto, 'id' | 'stock'>;
+export interface CajaProducto {
+  unidades: number;
+  precioCompra?: number;
+  precioVenta?: number | null;
+  cajasIniciales?: number;
+}
+export type ProductoInput = Omit<Producto, 'id' | 'stock'> & {
+  existenciasIniciales?: number;
+  imagen?: string;
+  quitarImagen?: boolean;
+};
 export interface Movimiento {
   id: number;
   productoId: number;
@@ -53,7 +64,13 @@ export interface Movimiento {
 }
 export type MedioPago = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA';
 export interface Cobro {
-  lineas: { productoId: number; cantidad: number; observaciones: string }[];
+  lineas: {
+    productoId: number;
+    cantidad: number;
+    observaciones: string;
+    presentacion?: 'UNIDAD' | 'CAJA';
+    unidadesPorPresentacion?: number;
+  }[];
   metodoPago: MedioPago;
   recibido: number | null;
   totalEsperado: number;
@@ -79,6 +96,8 @@ export interface Ticket {
     precioUnitario: number;
     subtotal: number;
     observaciones: string | null;
+    presentacion?: 'UNIDAD' | 'CAJA';
+    unidadesPorPresentacion?: number;
   }[];
 }
 export interface HistorialVentas {
@@ -122,7 +141,9 @@ export class ApiService {
     return this.http.get<Producto[]>('/api/productos');
   }
   guardar(p: ProductoInput, id?: number) {
-    return id ? this.http.put('/api/productos/' + id, p) : this.http.post('/api/productos', p);
+    return id
+      ? this.http.put<{ id: number; sku: string }>('/api/productos/' + id, p)
+      : this.http.post<{ id: number; sku: string }>('/api/productos', p);
   }
   eliminar(id: number) {
     return this.http.delete('/api/productos/' + id);
@@ -139,7 +160,14 @@ export class ApiService {
   recuperarVenta(solicitudId: string) {
     return this.http.get<Ticket>('/api/ventas/solicitud/' + solicitudId).pipe(timeout(20000));
   }
-  mover(body: { productoId: number; tipo: string; cantidad: number; motivo: string }) {
+  mover(body: {
+    productoId: number;
+    tipo: string;
+    cantidad: number;
+    motivo: string;
+    presentacion?: 'UNIDAD' | 'CAJA';
+    unidadesPorPresentacion?: number;
+  }) {
     return this.http.post('/api/inventario/movimientos', body);
   }
   movimientos() {

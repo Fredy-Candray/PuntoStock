@@ -12,7 +12,7 @@ import sv.puntostock.service.ConsultasService;
 @RestController
 @RequestMapping("/api/productos")
 public class CatalogoController {
-  public record IdRespuesta(Long id) {}
+  public record IdRespuesta(Long id, String sku) {}
 
   private final CatalogoService catalogo;
   private final ConsultasService consultas;
@@ -44,14 +44,17 @@ public class CatalogoController {
 
   @PostMapping
   @PreAuthorize("hasRole('ADMIN')")
-  public IdRespuesta crear(@Valid @RequestBody ProductoInput in) {
-    return new IdRespuesta(catalogo.guardar(null, in).id);
+  public IdRespuesta crear(@Valid @RequestBody ProductoInput in, Authentication actor) {
+    var p = catalogo.guardar(null, in, actor.getName());
+    return new IdRespuesta(p.id, p.sku);
   }
 
   @PutMapping("/{id}")
   @PreAuthorize("hasRole('ADMIN')")
-  public IdRespuesta actualizar(@PathVariable Long id, @Valid @RequestBody ProductoInput in) {
-    return new IdRespuesta(catalogo.guardar(id, in).id);
+  public IdRespuesta actualizar(
+      @PathVariable Long id, @Valid @RequestBody ProductoInput in, Authentication actor) {
+    var p = catalogo.guardar(id, in, actor.getName());
+    return new IdRespuesta(p.id, p.sku);
   }
 
   @DeleteMapping("/{id}")

@@ -51,6 +51,13 @@ export class InventarioComponent {
     this.filtrar();
   }
   productoId: number | null = null;
+  presentacion: 'UNIDAD' | 'CAJA' = 'UNIDAD';
+  productoSeleccionado() {
+    return this.productos().find((p) => p.id === this.productoId);
+  }
+  factorCaja() {
+    return this.presentacion === 'CAJA' ? (this.productoSeleccionado()?.caja?.unidades ?? 1) : 1;
+  }
   tipo = 'COMPRA';
   cantidad = 1;
   motivo = '';
@@ -101,6 +108,9 @@ export class InventarioComponent {
         tipo: this.tipo,
         cantidad: this.delta(),
         motivo: this.motivo,
+        ...(this.presentacion === 'CAJA'
+          ? { presentacion: 'CAJA' as const, unidadesPorPresentacion: this.factorCaja() }
+          : {}),
       })
       .subscribe({
         next: () => {

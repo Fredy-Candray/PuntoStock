@@ -113,11 +113,14 @@
               <tbody>
                 @for (p of visibles(); track p.id) {
                   <tr>
-                    <td>
+                    <td class="pos-product-cell">
                       <div class="cell-primary">
-                        <span class="product-symbol"
-                          ><ps-icon [name]="servicio(p) ? 'printer' : 'box'"
-                        /></span>
+                        <ps-producto-imagen
+                          class="product-symbol"
+                          [src]="p.fotoUrl"
+                          [alt]="'Imagen de ' + p.nombre"
+                          [icon]="servicio(p) ? 'printer' : 'box'"
+                        />
                         <div>
                           <strong>{{ p.nombre }}</strong
                           ><small
@@ -129,7 +132,7 @@
                         </div>
                       </div>
                     </td>
-                    <td>
+                    <td class="pos-stock-cell">
                       @if (servicio(p)) {
                         <span class="service-tag">Servicio</span>
                       } @else {
@@ -141,21 +144,39 @@
                         >
                       }
                     </td>
-                    <td>
+                    <td class="pos-price-cell">
                       <strong>{{ p.precioVenta | currency: 'USD' }}</strong
                       ><small class="price-unit">por {{ unidad(p) }}</small>
                     </td>
                     <td class="text-right">
-                      <button
-                        class="btn btn-quiet btn-small"
-                        [disabled]="
-                          bloqueado() || (!servicio(p) && p.stock === 0) || p.precioVenta <= 0
-                        "
-                        (click)="agregar(p)"
-                        [attr.aria-label]="'Agregar ' + p.nombre"
-                      >
-                        <ps-icon name="plus" /> Agregar
-                      </button>
+                      <div class="pos-add-actions">
+                        @if (p.caja?.precioVenta) {
+                          <button
+                            class="btn btn-secondary btn-small"
+                            [disabled]="bloqueado() || cajasDisponibles(p) === 0"
+                            [title]="
+                              cajasDisponibles(p) === 0
+                                ? 'No quedan unidades disponibles para una caja completa'
+                                : cajasDisponibles(p) + ' caja(s) completa(s) disponibles'
+                            "
+                            (click)="agregar(p, 'CAJA')"
+                            [attr.aria-label]="'Agregar caja de ' + p.nombre"
+                          >
+                            Caja de {{ p.caja?.unidades }} ·
+                            {{ p.caja?.precioVenta | currency: 'USD' }}
+                          </button>
+                        }
+                        <button
+                          class="btn btn-quiet btn-small pos-add-unit"
+                          [disabled]="
+                            bloqueado() || (!servicio(p) && p.stock === 0) || p.precioVenta <= 0
+                          "
+                          (click)="agregar(p)"
+                          [attr.aria-label]="'Agregar ' + p.nombre"
+                        >
+                          <ps-icon name="plus" /> {{ p.caja?.precioVenta ? 'Unidad' : 'Agregar' }}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 } @empty {
@@ -209,21 +230,26 @@
         </button>
       </div>
       <div class="cart-lines">
-        @for (l of carrito(); track l.producto.id) {
+        @for (l of carrito(); track claveLinea(l)) {
           <div class="cart-line">
             <div class="cart-line-top">
               <div>
-                <h3>{{ l.producto.nombre }}</h3>
+                <h3>
+                  {{ l.producto.nombre
+                  }}{{ l.presentacion === 'CAJA' ? ' · Caja de ' + factor(l) : '' }}
+                </h3>
                 <small
-                  >{{ l.producto.precioVenta | currency: 'USD' }} por
-                  {{ unidad(l.producto) }}</small
+                  >{{ precioLinea(l) | currency: 'USD' }} por
+                  {{ l.presentacion === 'CAJA' ? 'caja' : unidad(l.producto) }}</small
                 >
               </div>
               <button
                 class="icon-btn danger"
                 [disabled]="bloqueado()"
-                (click)="quitar(l.producto.id)"
-                [attr.aria-label]="'Quitar ' + l.producto.nombre"
+                (click)="quitar(l.producto.id, l.presentacion ?? 'UNIDAD')"
+                [attr.aria-label]="
+                  'Quitar ' + l.producto.nombre + (l.presentacion === 'CAJA' ? ' (caja)' : '')
+                "
               >
                 <ps-icon name="close" />
               </button>
@@ -231,36 +257,49 @@
             @if (!l.disponible) {
               <p class="cart-invalid">Ya no está disponible. Retíralo de la venta.</p>
             }
+            @if (l.disponible && !lineaValida(l)) {
+              <p class="cart-invalid">
+                Revisa la presentación, la cantidad y las unidades disponibles.
+              </p>
+            }
             <div class="cart-line-bottom">
               <div class="quantity-control">
                 <button
                   [disabled]="bloqueado()"
-                  (click)="disminuir(l.producto.id)"
-                  [attr.aria-label]="'Restar una unidad de ' + l.producto.nombre"
+                  (click)="disminuir(l.producto.id, l.presentacion ?? 'UNIDAD')"
+                  [attr.aria-label]="
+                    'Restar una unidad de ' +
+                    l.producto.nombre +
+                    (l.presentacion === 'CAJA' ? ' (caja)' : '')
+                  "
                 >
                   <ps-icon name="minus" /></button
                 ><input
                   type="number"
                   min="1"
                   step="1"
-                  [max]="servicio(l.producto) ? 100000 : l.producto.stock"
+                  [max]="maximoLinea(l)"
                   [ngModel]="l.cantidad"
-                  (ngModelChange)="cantidad(l.producto.id, $event)"
+                  (ngModelChange)="cantidad(l.producto.id, $event, l.presentacion ?? 'UNIDAD')"
                   [disabled]="bloqueado()"
-                  [attr.aria-label]="'Cantidad de ' + l.producto.nombre"
-                /><button
-                  [disabled]="
-                    bloqueado() ||
-                    (!servicio(l.producto) && l.cantidad >= l.producto.stock) ||
-                    l.cantidad >= 100000
+                  [attr.aria-label]="
+                    'Cantidad de ' +
+                    l.producto.nombre +
+                    (l.presentacion === 'CAJA' ? ' (caja)' : '')
                   "
-                  (click)="agregar(l.producto)"
-                  [attr.aria-label]="'Sumar una unidad de ' + l.producto.nombre"
+                /><button
+                  [disabled]="bloqueado() || l.cantidad >= maximoLinea(l) || l.cantidad >= 100000"
+                  (click)="agregar(l.producto, l.presentacion ?? 'UNIDAD')"
+                  [attr.aria-label]="
+                    'Sumar una unidad de ' +
+                    l.producto.nombre +
+                    (l.presentacion === 'CAJA' ? ' (caja)' : '')
+                  "
                 >
                   <ps-icon name="plus" />
                 </button>
               </div>
-              <strong>{{ l.producto.precioVenta * l.cantidad | currency: 'USD' }}</strong>
+              <strong>{{ precioLinea(l) * l.cantidad | currency: 'USD' }}</strong>
             </div>
             @if (servicio(l.producto)) {
               <input

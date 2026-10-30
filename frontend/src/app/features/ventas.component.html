@@ -70,7 +70,7 @@
         <span class="count-label">{{ d.cantidad }} resultados</span>
       </div>
       <div class="table-scroll">
-        <table>
+        <table class="responsive-table">
           <thead>
             <tr>
               <th>Venta</th>
@@ -84,11 +84,11 @@
           <tbody>
             @for (v of d.ventas; track v.id) {
               <tr>
-                <td>
+                <td data-label="Venta">
                   <strong>#{{ v.id }}</strong>
                 </td>
-                <td>{{ v.fecha | date: 'HH:mm' : '-0600' }}</td>
-                <td>
+                <td data-label="Hora">{{ v.fecha | date: 'HH:mm' : '-0600' }}</td>
+                <td data-label="Cliente / vendedor">
                   <div class="cell-primary">
                     <div>
                       <strong>{{ v.cliente || 'Público general' }}</strong
@@ -96,13 +96,13 @@
                     </div>
                   </div>
                 </td>
-                <td>
+                <td data-label="Pago">
                   <span class="movement-label">{{ medio(v.metodoPago) }}</span>
                 </td>
-                <td>
+                <td data-label="Total">
                   <strong>{{ v.total | currency: 'USD' }}</strong>
                 </td>
-                <td>
+                <td data-label="Acciones">
                   <button
                     class="btn btn-quiet btn-small"
                     (click)="abrir(v.id)"

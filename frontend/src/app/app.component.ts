@@ -64,6 +64,7 @@ import { UserMenuComponent } from './core/user-menu.component';
             }
           </nav>
           <div class="sidebar-bottom">
+            <ps-user-menu class="mobile-user-menu" />
             <div class="sidebar-theme"><ps-theme-toggle /></div>
           </div>
         </aside>

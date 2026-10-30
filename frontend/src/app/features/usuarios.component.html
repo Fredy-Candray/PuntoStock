@@ -72,7 +72,7 @@
     <div class="loading-line" role="status">Cargando usuarios…</div>
   } @else {
     <div class="table-scroll">
-      <table>
+      <table class="responsive-table">
         <thead>
           <tr>
             <th>Usuario</th>
@@ -85,7 +85,7 @@
         <tbody>
           @for (u of filtrados(); track u.id) {
             <tr>
-              <td>
+              <td data-label="Usuario">
                 <div class="cell-primary">
                   <span class="avatar">{{ u.nombre.charAt(0).toUpperCase() }}</span>
                   <div>
@@ -94,20 +94,22 @@
                   </div>
                 </div>
               </td>
-              <td>{{ u.roles.includes('ADMIN') ? 'Administrador' : 'Vendedor' }}</td>
-              <td>
+              <td data-label="Rol">
+                {{ u.roles.includes('ADMIN') ? 'Administrador' : 'Vendedor' }}
+              </td>
+              <td data-label="Estado">
                 <span class="stock-tag" [class.empty]="!u.activo">{{
                   u.activo ? 'Activo' : 'Inactivo'
                 }}</span>
               </td>
-              <td>
+              <td data-label="Fecha de alta">
                 {{
                   u.fechaCreacion
                     ? (u.fechaCreacion | date: 'dd/MM/yyyy' : '-0600')
                     : 'Sin registro'
                 }}
               </td>
-              <td>
+              <td data-label="Acciones">
                 <div class="admin-row-actions">
                   <button
                     class="icon-btn"
@@ -221,6 +223,7 @@
                   minlength="12"
                   maxlength="72"
                   autocomplete="new-password"
+                  aria-describedby="usuario-password-ayuda"
                   [placeholder]="
                     id === null ? 'Mínimo 12 caracteres' : 'Vacía para conservar la actual'
                   "
@@ -231,7 +234,12 @@
                   [attr.aria-label]="visible ? 'Ocultar contraseña' : 'Mostrar contraseña'"
                 >
                   <ps-icon [name]="visible ? 'eyeOff' : 'eye'" />
-                </button></div></label
+                </button>
+              </div>
+              <span id="usuario-password-ayuda" class="field-help">
+                Mínimo 12 caracteres. Al editar, deja el campo vacío para conservar la contraseña
+                actual.
+              </span></label
             ><label
               >Rol<select name="rol" [(ngModel)]="modelo.rol" [disabled]="propio()" required>
                 <option value="VENDEDOR">Vendedor</option>

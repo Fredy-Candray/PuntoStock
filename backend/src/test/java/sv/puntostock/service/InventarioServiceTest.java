@@ -39,6 +39,19 @@ class InventarioServiceTest {
   }
 
   @Test
+  void compraPorCajaConvierteAUnidadesSinDuplicarMovimiento() {
+    p.unidadesPorCaja = 12;
+    service.mover(new MovimientoInput(1L, "COMPRA", 2, "Compra", "CAJA", 12), "vendedor");
+    assertEquals(29, p.stock);
+    verify(movimientos, times(1)).save(any());
+    assertThrows(
+        ResponseStatusException.class,
+        () ->
+            service.mover(new MovimientoInput(1L, "COMPRA", 2, "Compra", "CAJA", 24), "vendedor"));
+    assertEquals(29, p.stock);
+  }
+
+  @Test
   void rechazaSalidaConSignoPositivo() {
     assertThrows(
         ResponseStatusException.class,

@@ -59,11 +59,13 @@ public class VentaService {
             .orElseThrow(() -> new ResponseStatusException(UNAUTHORIZED));
     if (in.lineas() == null || in.lineas().isEmpty() || in.lineas().size() > 100)
       throw new ResponseStatusException(BAD_REQUEST, "La venta requiere entre 1 y 100 líneas.");
-    Set<Long> ids = new HashSet<>();
+    Set<String> ids = new HashSet<>();
     for (Linea l : in.lineas()) {
       if (l.productoId() == null || l.cantidad() < 1 || l.cantidad() > 100000)
         throw new ResponseStatusException(BAD_REQUEST, "Cantidad inválida.");
-      if (!ids.add(l.productoId()))
+      if (!Set.of("UNIDAD", "CAJA").contains(presentacion(l)))
+        throw new ResponseStatusException(BAD_REQUEST, "Presentación inválida.");
+      if (!ids.add(l.productoId() + ":" + presentacion(l)))
         throw new ResponseStatusException(BAD_REQUEST, "Producto repetido");
     }
     String firma = firma(in);
@@ -84,29 +86,51 @@ public class VentaService {
     v.solicitudId = in.solicitudId();
     v.firmaSolicitud = firma;
     // Orden de bloqueo consistente para reducir deadlocks entre ventas.
-    var lineas = in.lineas().stream().sorted(Comparator.comparing(Linea::productoId)).toList();
+    var lineas =
+        in.lineas().stream()
+            .sorted(
+                Comparator.comparing(Linea::productoId).thenComparing(VentaService::presentacion))
+            .toList();
     Map<Long, Producto> bloqueados = new HashMap<>();
-    for (Linea l : lineas) bloqueados.put(l.productoId(), bloquear(l.productoId()));
+    for (Linea l : lineas)
+      if (!bloqueados.containsKey(l.productoId()))
+        bloqueados.put(l.productoId(), bloquear(l.productoId()));
+    Map<Long, Long> consumos = new HashMap<>();
     for (Linea l : lineas) {
       Producto p = bloqueados.get(l.productoId());
-      if (p.precioVenta.signum() <= 0)
+      boolean porCaja = "CAJA".equals(presentacion(l));
+      if (porCaja
+          && (p.tipo.equals("SERVICIO") || p.unidadesPorCaja == null || p.precioVentaCaja == null))
+        throw new ResponseStatusException(
+            CONFLICT, "La venta por caja no está habilitada para " + p.nombre);
+      int factor = porCaja ? p.unidadesPorCaja : 1;
+      if (l.unidadesPorPresentacion() != null && l.unidadesPorPresentacion() != factor)
+        throw new ResponseStatusException(
+            CONFLICT, "Cambió el contenido de la caja. Actualiza el catálogo antes de cobrar.");
+      BigDecimal precio = porCaja ? p.precioVentaCaja : p.precioVenta;
+      BigDecimal costo = porCaja ? p.precioCompraCaja : p.precioCompra;
+      long consumo = (long) factor * l.cantidad();
+      long acumulado = consumos.merge(p.id, consumo, Long::sum);
+      if (precio.signum() <= 0)
         throw new ResponseStatusException(
             CONFLICT, "Configura un precio de venta mayor que cero para " + p.nombre);
-      if (!p.tipo.equals("SERVICIO") && p.stock < l.cantidad())
+      if (!p.tipo.equals("SERVICIO") && (acumulado > Integer.MAX_VALUE || p.stock < acumulado))
         throw new ResponseStatusException(CONFLICT, "Stock insuficiente: " + p.sku);
       DetalleVenta d = new DetalleVenta();
       d.venta = v;
       d.producto = p;
       d.cantidad = l.cantidad();
-      d.costoUnitario = p.precioCompra;
-      d.precioUnitario = p.precioVenta;
+      d.costoUnitario = costo;
+      d.precioUnitario = precio;
+      d.presentacion = presentacion(l);
+      d.unidadesPorPresentacion = factor;
       v.detalles.add(d);
       d.nombreProducto = p.nombre;
       d.skuProducto = p.sku;
       d.observaciones = limpio(l.observaciones());
       BigDecimal cantidad = BigDecimal.valueOf(l.cantidad());
-      v.total = v.total.add(p.precioVenta.multiply(cantidad));
-      v.ganancia = v.ganancia.add(p.precioVenta.subtract(p.precioCompra).multiply(cantidad));
+      v.total = v.total.add(precio.multiply(cantidad));
+      v.ganancia = v.ganancia.add(precio.subtract(costo).multiply(cantidad));
     }
     if (v.total.precision() - v.total.scale() > 17)
       throw new ResponseStatusException(BAD_REQUEST, "El importe supera el límite permitido.");
@@ -126,10 +150,20 @@ public class VentaService {
     v.cliente = limpio(in.cliente());
     v.referenciaPago = limpio(in.referenciaPago());
     ventas.save(v);
-    for (Linea l : lineas) {
-      Producto p = bloqueados.get(l.productoId());
+    for (DetalleVenta d : v.detalles) {
+      Producto p = d.producto;
       if (!p.tipo.equals("SERVICIO"))
-        inventario.registrar(p, u, "VENTA", -l.cantidad(), "Venta #" + v.id, v);
+        inventario.registrar(
+            p,
+            u,
+            "VENTA",
+            -Math.multiplyExact(d.cantidad, d.unidadesPorPresentacion),
+            "Venta #"
+                + v.id
+                + ("CAJA".equals(d.presentacion)
+                    ? " · " + d.cantidad + " caja(s) de " + d.unidadesPorPresentacion + " unidades"
+                    : ""),
+            v);
     }
     return ticket(v);
   }
@@ -138,15 +172,26 @@ public class VentaService {
     return value == null ? "" : value.trim();
   }
 
+  private static String presentacion(Linea l) {
+    return l.presentacion() == null ? "UNIDAD" : l.presentacion();
+  }
+
   private static String firma(VentaInput in) {
     var parts = new ArrayList<String>();
     in.lineas().stream()
-        .sorted(Comparator.comparing(Linea::productoId))
+        .sorted(Comparator.comparing(Linea::productoId).thenComparing(VentaService::presentacion))
         .forEach(
             l -> {
               parts.add(l.productoId().toString());
               parts.add(Integer.toString(l.cantidad()));
               parts.add(limpio(l.observaciones()));
+              if ("CAJA".equals(presentacion(l))) {
+                parts.add("CAJA");
+                parts.add(
+                    l.unidadesPorPresentacion() == null
+                        ? ""
+                        : l.unidadesPorPresentacion().toString());
+              }
             });
     parts.add(in.metodoPago() == null ? "EFECTIVO" : in.metodoPago());
     parts.add(in.recibido() == null ? "" : in.recibido().stripTrailingZeros().toPlainString());
@@ -189,7 +234,9 @@ public class VentaService {
                         d.cantidad,
                         d.precioUnitario,
                         d.precioUnitario.multiply(BigDecimal.valueOf(d.cantidad)),
-                        d.observaciones))
+                        d.observaciones,
+                        d.presentacion,
+                        d.unidadesPorPresentacion))
             .toList());
   }
 

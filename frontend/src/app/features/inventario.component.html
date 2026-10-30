@@ -27,13 +27,32 @@
     </div>
     <form class="panel-body inventory-form" #f="ngForm" (ngSubmit)="guardar()">
       <label
-        >Producto<select name="producto" [(ngModel)]="productoId" required>
+        >Producto<select
+          name="producto"
+          [(ngModel)]="productoId"
+          (ngModelChange)="presentacion = 'UNIDAD'"
+          required
+        >
           <option [ngValue]="null">Selecciona un producto</option>
           @for (p of productos(); track p.id) {
             <option [ngValue]="p.id">{{ p.nombre }} · {{ p.stock }} uds.</option>
           }
         </select></label
       >
+      @if (productoSeleccionado()?.caja) {
+        <label
+          >Presentación del movimiento<select
+            name="presentacionMovimiento"
+            aria-label="Presentación del movimiento"
+            [(ngModel)]="presentacion"
+          >
+            <option value="UNIDAD">Unidades individuales</option>
+            <option value="CAJA">
+              Cajas de {{ productoSeleccionado()?.caja?.unidades }} unidades
+            </option>
+          </select></label
+        >
+      }
       <label
         >Tipo de movimiento<select name="tipo" [(ngModel)]="tipo" (ngModelChange)="cambiarTipo()">
           @for (t of tipos; track t) {
@@ -42,7 +61,12 @@
         </select></label
       >
       <label
-        >{{ tipo === 'AJUSTE' ? 'Cantidad a sumar o restar' : 'Cantidad de unidades'
+        >{{
+          tipo === 'AJUSTE'
+            ? 'Cantidad a sumar o restar'
+            : presentacion === 'CAJA'
+              ? 'Cantidad de cajas'
+              : 'Cantidad de unidades'
         }}<input
           name="cantidad"
           type="number"
@@ -58,12 +82,18 @@
               : 'Estas unidades se agregarán al stock.'
         }}</span></label
       >
+      @if (presentacion === 'CAJA') {
+        <span class="field-help"
+          >{{ cantidad }} caja(s) × {{ factorCaja() }} = {{ cantidad * factorCaja() }} unidades
+          (antes de aplicar el signo del movimiento).</span
+        >
+      }
       <label
         >Motivo<textarea
           name="motivo"
           [(ngModel)]="motivo"
           required
-          maxlength="500"
+          [maxlength]="presentacion === 'CAJA' ? 400 : 500"
           placeholder="Describe el motivo o la referencia del movimiento"
         ></textarea>
       </label>
@@ -117,7 +147,7 @@
       </div>
     </div>
     <div class="table-scroll">
-      <table class="inventory-table">
+      <table class="responsive-table inventory-table">
         <thead>
           <tr>
             <th>Fecha</th>
@@ -130,22 +160,26 @@
         <tbody>
           @for (m of movimientos(); track m.id) {
             <tr>
-              <td>
+              <td data-label="Fecha">
                 {{ m.fecha + 'Z' | date: 'dd/MM/yy' : '-0600' }}<br /><small class="muted">{{
                   m.fecha + 'Z' | date: 'HH:mm' : '-0600'
                 }}</small>
               </td>
-              <td class="inventory-product">
+              <td class="inventory-product" data-label="Producto y motivo">
                 <strong>{{ nombreProducto(m.productoId) }}</strong>
                 <div class="inventory-motive">{{ m.motivo }}</div>
               </td>
-              <td>
+              <td data-label="Tipo">
                 <span class="movement-label">{{ tipoNombre(m.tipo) }}</span>
               </td>
-              <td [class.quantity-in]="m.cantidad > 0" [class.quantity-out]="m.cantidad < 0">
+              <td
+                data-label="Cantidad"
+                [class.quantity-in]="m.cantidad > 0"
+                [class.quantity-out]="m.cantidad < 0"
+              >
                 {{ m.cantidad > 0 ? '+' : '' }}{{ m.cantidad }}
               </td>
-              <td>
+              <td data-label="Stock final">
                 <strong>{{ m.stockPosterior }}</strong>
                 <small class="muted">/ antes {{ m.stockAnterior }}</small>
               </td>

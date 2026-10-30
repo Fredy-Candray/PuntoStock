@@ -21,6 +21,12 @@ public class DetalleVenta {
 
   public int cantidad;
 
+  @Column(nullable = false, length = 10)
+  public String presentacion = "UNIDAD";
+
+  @Column(name = "unidades_por_presentacion", nullable = false)
+  public int unidadesPorPresentacion = 1;
+
   @org.hibernate.annotations.Nationalized
   @Column(name = "nombre_producto", length = 160)
   public String nombreProducto;

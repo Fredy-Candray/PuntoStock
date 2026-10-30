@@ -24,7 +24,7 @@ Los logs identifican el número de solicitud y la clase de error, sin dirección
 
 ## Migraciones y respaldo
 
-Flyway mantiene scripts V1-V8 y verifica sus checksums; Hibernate conserva `ddl-auto: validate`. No modificar scripts aplicados: crear V9 y siguientes. Los SQL de `database/001-006` son antecedentes del inicializador local; las nuevas migraciones de ejecución están en `backend/src/main/resources/db/migration`.
+Flyway mantiene scripts V1-V11 y verifica sus checksums; Hibernate conserva `ddl-auto: validate`. No modificar scripts aplicados: crear V12 y siguientes. Los SQL de `database/001-006` son antecedentes del inicializador local; las nuevas migraciones de ejecución están en `backend/src/main/resources/db/migration`.
 
 En una instalación local existente completa hasta 006, ejecutar `scripts/Migrate-Local.ps1`: verifica la marca de entorno, crea un respaldo COPY_ONLY con CHECKSUM, ejecuta VERIFYONLY, adopta explícitamente versión 6 y aplica las posteriores. Los permisos DDL se conceden temporalmente y se retiran en finally. No se usa baseline automático en el arranque normal. La cuenta de aplicación conserva DML, no db_owner ni db_ddladmin. Las migraciones fallidas deben revisarse; no ejecutar repair o clean para ocultar discrepancias.
 

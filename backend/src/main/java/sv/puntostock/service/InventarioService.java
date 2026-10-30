@@ -76,6 +76,23 @@ public class InventarioService {
     Producto p = bloquear(in.productoId());
     if (p.tipo.equals("SERVICIO"))
       throw new ResponseStatusException(BAD_REQUEST, "Los servicios no llevan existencias.");
-    registrar(p, u, in.tipo(), in.cantidad(), in.motivo(), null);
+    String presentacion = in.presentacion() == null ? "UNIDAD" : in.presentacion();
+    if (!Set.of("UNIDAD", "CAJA").contains(presentacion)
+        || (presentacion.equals("CAJA") && p.unidadesPorCaja == null))
+      throw new ResponseStatusException(BAD_REQUEST, "Presentación de inventario no disponible.");
+    int factor = presentacion.equals("CAJA") ? p.unidadesPorCaja : 1;
+    if (in.unidadesPorPresentacion() != null && in.unidadesPorPresentacion() != factor)
+      throw new ResponseStatusException(
+          CONFLICT, "Cambió el contenido de la caja. Actualiza el producto.");
+    long cantidad = (long) in.cantidad() * factor;
+    if (cantidad < Integer.MIN_VALUE || cantidad > Integer.MAX_VALUE)
+      throw new ResponseStatusException(BAD_REQUEST, "Cantidad fuera de rango.");
+    String motivo =
+        presentacion.equals("CAJA")
+            ? in.cantidad() + " caja(s) de " + factor + " unidades · " + in.motivo()
+            : in.motivo();
+    if (motivo.length() > 500)
+      throw new ResponseStatusException(BAD_REQUEST, "Acorta el motivo del movimiento.");
+    registrar(p, u, in.tipo(), (int) cantidad, motivo, null);
   }
 }

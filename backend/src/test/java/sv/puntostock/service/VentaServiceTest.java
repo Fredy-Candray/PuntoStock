@@ -74,6 +74,63 @@ class VentaServiceTest {
     verify(ventas, times(1)).save(any());
   }
 
+  void productoPorCaja() {
+    p.stock = 27;
+    p.unidadesPorCaja = 12;
+    p.precioCompraCaja = new BigDecimal("6.00");
+    p.precioVentaCaja = new BigDecimal("8.00");
+    p.precioCompra = new BigDecimal("0.50");
+    p.precioVenta = BigDecimal.ONE;
+  }
+
+  @Test
+  void ventaMixtaDescuentaPiezasYConservaPresentacionHistorica() {
+    productoPorCaja();
+    var in = new VentaInput(List.of(new Linea(1L, 1, null, "CAJA", 12), new Linea(1L, 3)));
+    var r = service.vender(in, "vendedor");
+    assertEquals(new BigDecimal("11.00"), r.total());
+    assertEquals(12, p.stock);
+    assertEquals("CAJA", r.lineas().get(0).presentacion());
+    assertEquals(12, r.lineas().get(0).unidadesPorPresentacion());
+    var c = ArgumentCaptor.forClass(Venta.class);
+    verify(ventas).save(c.capture());
+    assertEquals(new BigDecimal("3.50"), c.getValue().ganancia);
+    p.unidadesPorCaja = 24;
+    p.precioVentaCaja = BigDecimal.TEN;
+    when(ventas.findById(10L)).thenReturn(Optional.of(c.getValue()));
+    var historico = service.comprobante(10L, "vendedor");
+    assertEquals(12, historico.lineas().get(0).unidadesPorPresentacion());
+    assertEquals(new BigDecimal("8.00"), historico.lineas().get(0).precioUnitario());
+    var m = ArgumentCaptor.forClass(Movimiento.class);
+    verify(movimientos, times(2)).save(m.capture());
+    assertEquals(-15, m.getAllValues().stream().mapToInt(x -> x.cantidad).sum());
+  }
+
+  @Test
+  void cajaYPiezasCompartenStockYContenidoEsperadoSeValida() {
+    productoPorCaja();
+    assertThrows(
+        ResponseStatusException.class,
+        () ->
+            service.vender(
+                new VentaInput(List.of(new Linea(1L, 2, null, "CAJA", 12), new Linea(1L, 4))),
+                "vendedor"));
+    assertThrows(
+        ResponseStatusException.class,
+        () ->
+            service.vender(
+                new VentaInput(List.of(new Linea(1L, 1, null, "CAJA", 24))), "vendedor"));
+    p.precioVentaCaja = null;
+    assertThrows(
+        ResponseStatusException.class,
+        () ->
+            service.vender(
+                new VentaInput(List.of(new Linea(1L, 1, null, "CAJA", 12))), "vendedor"));
+    assertEquals(27, p.stock);
+    verify(ventas, never()).save(any());
+    verifyNoInteractions(movimientos);
+  }
+
   @Test
   void ventaConservaPreciosHistoricosYGeneraSalida() {
     VentaResultado resultado =

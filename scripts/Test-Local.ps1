@@ -43,7 +43,7 @@ try {
  Must (Request GET '/usuarios' $null $sellerToken) 403 'Vendedor no administra usuarios'
  Must (Request GET '/inventario/movimientos' $null $sellerToken) 403 'Vendedor no consulta auditoría administrativa'
  $run=[DateTime]::UtcNow.ToString('yyyyMMddHHmmss')
- $product=@{sku="LOCAL-$run";nombre='Café de prueba local';descripcion='Producto de demostración creado por la prueba local';precioCompra=2.50;precioVenta=4.00;fotoUrl='/assets/producto-demo.svg'}
+ $product=@{sku="LOCAL-$run";nombre='Café de prueba local';descripcion='Producto de demostración creado por la prueba local';precioCompra=2.50;precioVenta=4.00;fotoUrl='/assets/producto.svg'}
  Must (Request POST '/productos' $product $sellerToken) 403 'Vendedor no crea productos'
  $created=Request POST '/productos' $product $admin;Must $created 200 'Administrador crea producto';$id=[long]$created.Data.id
  Must (Request POST '/productos' $product $admin) 409 'SKU duplicado rechazado'

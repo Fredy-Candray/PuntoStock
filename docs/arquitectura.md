@@ -29,7 +29,7 @@ Las pantallas administrativas paginan y filtran en servidor. ConsultasService co
 - [Contrato de API](api.md): fuente vigente de rutas, cuerpos, permisos, páginas y errores.
 - [Estabilidad](estabilidad.md): seguridad, migraciones, respaldo, despliegue y límites.
 - [Validación](validacion.md): comandos y alcance de la evidencia, separando antecedentes de pruebas actuales.
-- Flyway V1-V8 es la fuente de migraciones de ejecución. Hibernate valida, no modifica el esquema.
+- Flyway V1-V11 es la fuente de migraciones de ejecución. Hibernate valida, no modifica el esquema. Las categorías del catálogo se almacenan en `categorias_productos`, separadas de los recordatorios; consultar `docs/categorias-productos.md`. La compra por caja y venta en piezas usa stock base individual y factores históricos; consultar `docs/productos-por-caja.md`. Las imágenes del catálogo se guardan en `producto_imagenes` y se consultan por una ruta autenticada; consultar `docs/imagenes-productos.md`.
 - Catálogo, inventario, ventas y perfil tienen servicios y controladores separados. Los contratos validados residen en application. InventarioService participa obligatoriamente en la transacción de VentaService al registrar movimientos de una venta. Una prueba compara las 32 rutas y sus permisos con el contrato previo. No se afirma una arquitectura hexagonal ni microservicios.
 
 La ganancia reportada es bruta y usa costo histórico de catálogo. Una devolución manual de stock no es reembolso ni anulación financiera. No se han definido impuestos, FIFO/promedio, cierres de caja o documentos fiscales.

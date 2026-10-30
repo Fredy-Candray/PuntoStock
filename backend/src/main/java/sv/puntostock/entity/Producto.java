@@ -62,6 +62,15 @@ public class Producto {
 
   @Version public long version;
 
+  @Column(name = "unidades_por_caja")
+  public Integer unidadesPorCaja;
+
+  @Column(name = "precio_compra_caja", precision = 19, scale = 2)
+  public BigDecimal precioCompraCaja;
+
+  @Column(name = "precio_venta_caja", precision = 19, scale = 2)
+  public BigDecimal precioVentaCaja;
+
   public void aplicarMovimiento(int cantidad) {
     long nuevo = (long) stock + cantidad;
     if (nuevo < 0 || nuevo > Integer.MAX_VALUE)

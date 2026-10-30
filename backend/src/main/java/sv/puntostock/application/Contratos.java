@@ -7,7 +7,7 @@ import java.util.List;
 
 public final class Contratos {
   public record ProductoInput(
-      @NotBlank @Size(max = 80) String sku,
+      @Size(max = 80) String sku,
       @NotBlank @Size(max = 160) String nombre,
       @NotBlank @Size(max = 2000) String descripcion,
       @NotNull @DecimalMin("0") @Digits(integer = 17, fraction = 2) BigDecimal precioCompra,
@@ -18,7 +18,76 @@ public final class Contratos {
       @Size(max = 80) String marca,
       @Pattern(regexp = "UNIDAD|PAQUETE|CAJA|RESMA|DOCENA|PAGINA|FOTOGRAFIA|TRABAJO") String unidad,
       @Size(max = 80) String ubicacion,
-      @Min(0) @Max(1000000) Integer stockMinimo) {
+      @Min(0) @Max(1000000) Integer stockMinimo,
+      @Min(0) @Max(1000000) Integer existenciasIniciales,
+      @Valid CajaProductoInput caja,
+      @Size(max = 1500000) String imagen,
+      Boolean quitarImagen) {
+    public ProductoInput(
+        String sku,
+        String nombre,
+        String descripcion,
+        BigDecimal precioCompra,
+        BigDecimal precioVenta,
+        String fotoUrl,
+        String tipo,
+        String categoria,
+        String marca,
+        String unidad,
+        String ubicacion,
+        Integer stockMinimo,
+        Integer existenciasIniciales,
+        CajaProductoInput caja) {
+      this(
+          sku,
+          nombre,
+          descripcion,
+          precioCompra,
+          precioVenta,
+          fotoUrl,
+          tipo,
+          categoria,
+          marca,
+          unidad,
+          ubicacion,
+          stockMinimo,
+          existenciasIniciales,
+          caja,
+          null,
+          null);
+    }
+
+    public ProductoInput(
+        String sku,
+        String nombre,
+        String descripcion,
+        BigDecimal precioCompra,
+        BigDecimal precioVenta,
+        String fotoUrl,
+        String tipo,
+        String categoria,
+        String marca,
+        String unidad,
+        String ubicacion,
+        Integer stockMinimo,
+        Integer existenciasIniciales) {
+      this(
+          sku,
+          nombre,
+          descripcion,
+          precioCompra,
+          precioVenta,
+          fotoUrl,
+          tipo,
+          categoria,
+          marca,
+          unidad,
+          ubicacion,
+          stockMinimo,
+          existenciasIniciales,
+          null);
+    }
+
     public ProductoInput(
         String sku,
         String nombre,
@@ -38,14 +107,31 @@ public final class Contratos {
           null,
           null,
           null,
+          null,
           null);
     }
   }
 
+  public record CajaProductoInput(
+      @NotNull @Min(2) @Max(1000000) Integer unidades,
+      @NotNull @DecimalMin("0") @Digits(integer = 17, fraction = 2) BigDecimal precioCompra,
+      @DecimalMin("0.01") @Digits(integer = 17, fraction = 2) BigDecimal precioVenta,
+      @Min(0) @Max(1000000) Integer cajasIniciales) {}
+
   public record Linea(
       @NotNull @Positive Long productoId,
       @Min(1) @Max(100000) int cantidad,
-      @Size(max = 200) String observaciones) {
+      @Size(max = 200) String observaciones,
+      @Pattern(regexp = "UNIDAD|CAJA") String presentacion,
+      @Min(1) @Max(1000000) Integer unidadesPorPresentacion) {
+    public Linea(Long productoId, int cantidad, String observaciones, String presentacion) {
+      this(productoId, cantidad, observaciones, presentacion, null);
+    }
+
+    public Linea(Long productoId, int cantidad, String observaciones) {
+      this(productoId, cantidad, observaciones, null);
+    }
+
     public Linea(Long productoId, int cantidad) {
       this(productoId, cantidad, null);
     }
@@ -71,7 +157,9 @@ public final class Contratos {
       int cantidad,
       BigDecimal precioUnitario,
       BigDecimal subtotal,
-      String observaciones) {}
+      String observaciones,
+      String presentacion,
+      int unidadesPorPresentacion) {}
 
   public record VentaResultado(
       Long id,
@@ -108,7 +196,13 @@ public final class Contratos {
       @NotNull @Positive Long productoId,
       @NotBlank String tipo,
       int cantidad,
-      @NotBlank @Size(max = 500) String motivo) {}
+      @NotBlank @Size(max = 500) String motivo,
+      @Pattern(regexp = "UNIDAD|CAJA") String presentacion,
+      @Min(1) @Max(1000000) Integer unidadesPorPresentacion) {
+    public MovimientoInput(Long productoId, String tipo, int cantidad, String motivo) {
+      this(productoId, tipo, cantidad, motivo, null, null);
+    }
+  }
 
   public record Login(
       @NotBlank @Size(max = 80) String username,

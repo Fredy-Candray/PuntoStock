@@ -14,13 +14,17 @@ Mismo origen que la interfaz. Prefijo `/api`. Los importes son USD, dos decimale
 | GET /auth/me/menu | Autenticado | Secciones y opciones autorizadas |
 | GET /productos | Autenticado | Lista de compatibilidad; costo solo ADMIN |
 | GET /productos/pagina | Autenticado | buscar, tipo, categoria, pagina=0, tamano=30 (máx. 100) |
-| POST/PUT /productos y /productos/{id} | ADMIN | sku, nombre, descripcion, precioCompra, precioVenta, fotoUrl, tipo, categoria, marca, unidad, ubicacion, stockMinimo; id |
+| POST/PUT /productos y /productos/{id} | ADMIN | sku opcional al crear (vacío u omitido genera código), obligatorio al editar; nombre, descripcion, precioCompra, precioVenta, fotoUrl, tipo, categoria, marca, unidad, ubicacion, stockMinimo; existenciasIniciales opcional al crear (0–1000000); caja opcional con unidades, precioCompra, precioVenta opcional y cajasIniciales; imagen opcional data URL JPEG/PNG (máx. 1 MB decodificado), quitarImagen opcional; respuesta id y sku definitivo |
 | DELETE /productos/{id} | ADMIN | Baja lógica |
-| POST /ventas | Autenticado | lineas[productoId,cantidad,observaciones], metodoPago, recibido, totalEsperado, cliente, referenciaPago, solicitudId UUID |
+| GET /productos/{id}/imagen | Autenticado | Imagen raster del producto activo en bytes, Content-Type JPEG/PNG y Cache-Control no-store; 404 si no tiene imagen o está inactivo |
+| GET /productos/categorias | ADMIN | Categorías del catálogo: id, nombre, activo, version; incluye inactivas para administración |
+| POST /productos/categorias | ADMIN | nombre (1–80 caracteres), activo; crea una categoría de artículos y servicios |
+| PUT /productos/categorias/{id} | ADMIN | nombre, activo, version vigente; renombra o cambia estado; 409 para nombre duplicado o versión anterior |
+| POST /ventas | Autenticado | lineas[productoId,cantidad,observaciones,presentacion opcional UNIDAD/CAJA,unidadesPorPresentacion esperadas opcional], metodoPago, recibido, totalEsperado, cliente, referenciaPago, solicitudId UUID; admite una línea por producto y presentación |
 | GET /ventas | Autenticado | fecha local opcional, pagina=0; 6 ventas por página, cantidad, paginas y totales por medio. Vendedor solo ve sus ventas |
-| GET /ventas/{id} | Dueño o ADMIN | Comprobante con valores históricos, sin costos |
+| GET /ventas/{id} | Dueño o ADMIN | Comprobante con valores históricos, sin costos; cada línea incluye presentacion y unidadesPorPresentacion históricas |
 | GET /ventas/solicitud/{uuid} | Cuenta de la solicitud | Comprobante de reintento; 404 si aún no se registró |
-| GET/POST /inventario/movimientos | ADMIN | Últimos 200 / productoId, tipo, cantidad, motivo |
+| GET/POST /inventario/movimientos | ADMIN | Últimos 200 / productoId, tipo, cantidad, motivo, presentacion opcional UNIDAD/CAJA y unidadesPorPresentacion esperadas; el historial guarda cantidades convertidas a unidades individuales |
 | GET /inventario/movimientos/pagina | ADMIN | desde/hasta locales inclusivos, productoId, pagina, tamano; permite recorrer todo el historial |
 | GET /reportes/ganancia | ADMIN | fecha requerida; fecha, ganancia bruta y alcance |
 | GET/POST /usuarios | ADMIN | Lista compatible sin imágenes / alta |

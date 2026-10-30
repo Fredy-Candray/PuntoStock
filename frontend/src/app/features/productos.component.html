@@ -4,6 +4,9 @@
     <p>Organiza papelería, impresiones, fotografías y los demás artículos del negocio.</p>
   </div>
   <div class="page-actions">
+    <button class="btn btn-secondary" type="button" (click)="abrirCategorias()" [disabled]="busy()">
+      Categorías
+    </button>
     <button class="btn btn-secondary" (click)="nuevoServicio()" [disabled]="busy()">
       <ps-icon name="plus" /> Nuevo servicio</button
     ><button class="btn btn-primary" (click)="nuevo()" [disabled]="busy()">
@@ -53,25 +56,68 @@
             <option value="SERVICIO">Servicio sin existencias</option>
           </select></label
         >
-        <label
-          >Categoría<input
-            name="categoria"
-            [(ngModel)]="modelo.categoria"
-            maxlength="80"
-            list="categorias"
-            required /><datalist id="categorias">
-            @for (c of categorias; track c) {
-              <option [value]="c"></option>
-            }</datalist
-        ></label>
-        <label
-          >Código SKU / código de barras<input
-            name="sku"
-            [(ngModel)]="modelo.sku"
-            required
-            maxlength="80"
-            placeholder="Ej. LAP-001 o IMP-BN-CARTA"
-        /></label>
+        <div class="categoria-control">
+          <label
+            >Categoría<select
+              name="categoria"
+              aria-label="Categoría"
+              [(ngModel)]="modelo.categoria"
+              required
+              [disabled]="categoriasCargando()"
+            >
+              <option value="" disabled>Selecciona una categoría</option>
+              @for (c of categoriasDisponibles(); track c.id) {
+                <option [value]="c.nombre">
+                  {{ c.nombre }}{{ c.activo ? '' : ' (inactiva)' }}
+                </option>
+              }
+            </select></label
+          >
+          <button
+            class="icon-btn"
+            type="button"
+            (click)="abrirCategorias()"
+            aria-label="Administrar categorías"
+            title="Administrar categorías"
+          >
+            <ps-icon name="plus" />
+          </button>
+          @if (categoriasError()) {
+            <span class="field-help" role="alert">{{ categoriasError() }}</span>
+          }
+        </div>
+        <div class="producto-codigo">
+          @if (id === undefined) {
+            <label class="producto-codigo-auto"
+              ><input
+                type="checkbox"
+                name="codigoAutomatico"
+                [(ngModel)]="codigoAutomatico"
+              />Generar código automáticamente</label
+            >
+          }
+          <label
+            >Código SKU / código de barras<input
+              name="sku"
+              aria-label="Código SKU / código de barras"
+              pattern=".*\S.*"
+              [(ngModel)]="modelo.sku"
+              [required]="id !== undefined || !codigoAutomatico"
+              [disabled]="id === undefined && codigoAutomatico"
+              maxlength="80"
+              [placeholder]="
+                id === undefined && codigoAutomatico
+                  ? 'Se asignará al guardar'
+                  : 'Escribe o escanea el código'
+              "
+          /></label>
+          @if (id === undefined && codigoAutomatico) {
+            <span class="field-help"
+              >Incluye tipo, categoría, nombre y número de ingreso. Ejemplo:
+              ART-PAP-CUA-000048.</span
+            >
+          }
+        </div>
         <label
           >Nombre<input
             name="nombre"
@@ -89,18 +135,40 @@
             placeholder="Tamaño, presentación, características o condiciones del servicio"
           ></textarea>
         </label>
-        <label
-          >Unidad de venta<select
-            aria-label="Unidad de venta"
-            name="unidad"
-            [(ngModel)]="modelo.unidad"
+        @if (modelo.tipo === 'PRODUCTO') {
+          <label
+            >Forma de compra<select
+              name="formaCompra"
+              aria-label="Forma de compra"
+              [(ngModel)]="compraPorCaja"
+              (ngModelChange)="cambiarCompraCaja()"
+            >
+              <option [ngValue]="false">Por unidad / presentación de venta</option>
+              <option [ngValue]="true">Por caja, para vender las piezas</option>
+            </select></label
           >
-            @for (u of unidades; track u) {
-              <option [value]="u">{{ u.replaceAll('_', ' ') }}</option>
-            }</select
-          ><span class="field-help"
-            >Precio y cantidad corresponden a esta unidad; por ejemplo, una página o una caja.</span
-          ></label
+        }
+        <label
+          >Unidad de venta
+          @if (compraPorCaja) {
+            <input aria-label="Unidad de venta" value="UNIDAD" readonly />
+          } @else {
+            <select
+              aria-label="Unidad de venta"
+              name="unidad"
+              [(ngModel)]="modelo.unidad"
+              (ngModelChange)="cambiarUnidad()"
+            >
+              @for (u of unidades; track u) {
+                <option [value]="u">{{ u.replaceAll('_', ' ') }}</option>
+              }
+            </select>
+          }
+          <span class="field-help">{{
+            compraPorCaja
+              ? 'El inventario y el precio unitario corresponden a una pieza individual.'
+              : 'Precio y cantidad corresponden a esta unidad de venta.'
+          }}</span></label
         >
         <label
           >Marca / referencia<input
@@ -109,19 +177,79 @@
             maxlength="80"
             placeholder="Opcional"
         /></label>
+        @if (compraPorCaja && modelo.tipo === 'PRODUCTO') {
+          <label
+            >Unidades por caja<input
+              aria-label="Unidades por caja"
+              name="unidadesCaja"
+              type="number"
+              min="2"
+              max="1000000"
+              step="1"
+              required
+              [(ngModel)]="cajaConfig.unidades"
+              (ngModelChange)="recalcularCaja()"
+          /></label>
+          <label
+            >Precio de compra de la caja · USD<input
+              aria-label="Precio de compra de la caja · USD"
+              name="costoCaja"
+              type="number"
+              min="0"
+              max="999999.99"
+              step="0.01"
+              required
+              [(ngModel)]="cajaConfig.precioCompra"
+              (ngModelChange)="recalcularCaja()"
+          /></label>
+          <div class="field-wide">
+            <label class="producto-codigo-auto"
+              ><input name="vendeCaja" type="checkbox" [(ngModel)]="vendeCaja" />Permitir también la
+              venta de caja completa</label
+            >
+            @if (vendeCaja) {
+              <label
+                >Precio de venta de la caja · USD<input
+                  aria-label="Precio de venta de la caja · USD"
+                  name="ventaCaja"
+                  type="number"
+                  min="0.01"
+                  max="999999.99"
+                  step="0.01"
+                  required
+                  [(ngModel)]="cajaConfig.precioVenta"
+                /><span class="field-help"
+                  >Puedes asignar un precio distinto al total de las piezas individuales.</span
+                ></label
+              >
+            }
+          </div>
+        }
         <label
           >{{
             modelo.tipo === 'SERVICIO' ? 'Costo estimado por unidad' : 'Precio de compra por unidad'
           }}
           · USD<input
             name="costo"
+            [attr.aria-label]="
+              modelo.tipo === 'SERVICIO'
+                ? 'Costo estimado por unidad · USD'
+                : 'Precio de compra por unidad · USD'
+            "
             type="number"
             min="0"
             max="999999.99"
             step="0.01"
             [(ngModel)]="modelo.precioCompra"
+            [readonly]="compraPorCaja"
             required
           />
+          @if (compraPorCaja) {
+            <span class="field-help"
+              >Costo de la caja dividido entre {{ cajaConfig.unidades }} piezas, redondeado a
+              centavos.</span
+            >
+          }
           @if (modelo.tipo === 'SERVICIO') {
             <span class="field-help"
               >Incluye papel, tinta y otros materiales utilizados por página, foto o trabajo.</span
@@ -139,6 +267,42 @@
             required
         /></label>
         @if (modelo.tipo !== 'SERVICIO') {
+          @if (id === undefined) {
+            @if (compraPorCaja) {
+              <label
+                >Cajas iniciales<input
+                  aria-label="Cajas iniciales"
+                  name="cajasIniciales"
+                  type="number"
+                  min="0"
+                  max="1000000"
+                  step="1"
+                  required
+                  [(ngModel)]="cajaConfig.cajasIniciales"
+              /></label>
+            }
+            <label
+              >{{ compraPorCaja ? 'Unidades sueltas iniciales' : 'Existencias iniciales'
+              }}<input
+                name="existenciasIniciales"
+                [attr.aria-label]="
+                  compraPorCaja ? 'Unidades sueltas iniciales' : 'Existencias iniciales'
+                "
+                type="number"
+                min="0"
+                max="1000000"
+                step="1"
+                [(ngModel)]="modelo.existenciasIniciales"
+                required
+              /><span class="field-help">{{
+                compraPorCaja
+                  ? 'Total que se registrará: ' +
+                    unidadesInicialesCaja() +
+                    ' unidades individuales.'
+                  : 'Unidades disponibles. Se registrarán automáticamente en Inventario al guardar.'
+              }}</span></label
+            >
+          }
           <label
             >Stock mínimo<input
               name="minimo"
@@ -158,20 +322,77 @@
               placeholder="Ej. Estante A, vitrina 2"
           /></label>
         }
-        <label class="field-wide"
-          >Imagen · URL o ruta opcional<input
-            name="foto"
-            [(ngModel)]="modelo.fotoUrl"
-            maxlength="1000"
-            placeholder="https://… o /assets/producto.svg"
-          /><span class="field-help"
-            >Se utiliza una imagen predeterminada si lo dejas vacío. Las existencias iniciales se
-            registran en Inventario.</span
-          ></label
-        >
+        <div class="field-wide producto-imagen-campo">
+          <span class="producto-imagen-label">Imagen del producto o servicio</span>
+          <div class="producto-imagen-selector">
+            <ps-producto-imagen
+              class="producto-foto-preview"
+              [src]="imagenNueva() ?? modelo.fotoUrl"
+              alt="Vista previa del producto"
+              [icon]="modelo.tipo === 'SERVICIO' ? 'printer' : 'box'"
+            />
+            <div>
+              <input
+                #archivoProducto
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                aria-label="Elegir imagen local"
+                hidden
+                (change)="seleccionarImagen($event)"
+              />
+              <div class="producto-imagen-acciones">
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  (click)="archivoProducto.click()"
+                  aria-describedby="producto-imagen-ayuda"
+                  [disabled]="busy() || imagenCargando()"
+                >
+                  {{ imagenCargando() ? 'Preparando imagen…' : 'Elegir imagen' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-quiet"
+                  (click)="quitarFoto()"
+                  [disabled]="busy()"
+                >
+                  Quitar imagen
+                </button>
+              </div>
+              <p id="producto-imagen-ayuda" class="field-help">
+                JPG, PNG o WebP de hasta 10 MB. Se optimiza y se guarda al guardar el producto.
+              </p>
+              @if (imagenError()) {
+                <p class="notice notice-error" role="alert">{{ imagenError() }}</p>
+              }
+            </div>
+          </div>
+          <details>
+            <summary>Usar una dirección web de imagen</summary>
+            <label
+              >Dirección de imagen · opcional<input
+                name="foto"
+                [(ngModel)]="modelo.fotoUrl"
+                (ngModelChange)="usarUrlImagen()"
+                maxlength="1000"
+                placeholder="https://… o /assets/producto.svg"
+            /></label>
+          </details>
+        </div>
       </div>
       <div class="form-actions">
-        <button class="btn btn-primary" [disabled]="f.invalid || busy()">
+        <button
+          class="btn btn-primary"
+          [disabled]="
+            f.invalid ||
+            busy() ||
+            imagenCargando() ||
+            !!imagenError() ||
+            categoriasCargando() ||
+            !!categoriasError() ||
+            (compraPorCaja && id === undefined && unidadesInicialesCaja() > 1000000)
+          "
+        >
           @if (busy()) {
             <span class="spinner"></span>
           } @else {
@@ -207,7 +428,7 @@
     </button>
   </div>
   <div class="table-scroll">
-    <table>
+    <table class="responsive-table">
       <thead>
         <tr>
           <th>Artículo / servicio</th>
@@ -221,11 +442,14 @@
       <tbody>
         @for (p of filtrados(); track p.id) {
           <tr>
-            <td>
+            <td data-label="Artículo / servicio">
               <div class="cell-primary">
-                <span class="product-symbol"
-                  ><ps-icon [name]="p.tipo === 'SERVICIO' ? 'printer' : 'box'"
-                /></span>
+                <ps-producto-imagen
+                  class="product-symbol"
+                  [src]="p.fotoUrl"
+                  [alt]="'Imagen de ' + p.nombre"
+                  [icon]="p.tipo === 'SERVICIO' ? 'printer' : 'box'"
+                />
                 <div>
                   <strong>{{ p.nombre }}</strong
                   ><small
@@ -237,12 +461,12 @@
                 </div>
               </div>
             </td>
-            <td class="mono">{{ p.sku }}</td>
-            <td>{{ p.precioCompra | currency: 'USD' }}</td>
-            <td>
+            <td class="mono" data-label="Código">{{ p.sku }}</td>
+            <td data-label="Costo">{{ p.precioCompra | currency: 'USD' }}</td>
+            <td data-label="Precio">
               <strong>{{ p.precioVenta | currency: 'USD' }}</strong>
             </td>
-            <td>
+            <td data-label="Disponibilidad">
               @if (p.tipo === 'SERVICIO') {
                 <span class="service-tag">Servicio</span>
               } @else {
@@ -254,8 +478,17 @@
                 >
               }
             </td>
-            <td>
+            <td data-label="Acciones">
               <div class="table-actions">
+                <button
+                  class="icon-btn"
+                  type="button"
+                  (click)="detalle.set(p)"
+                  [attr.aria-label]="'Ver ' + p.nombre"
+                  title="Ver información"
+                >
+                  <ps-icon name="eye" />
+                </button>
                 <button
                   class="icon-btn"
                   [disabled]="busy()"
@@ -306,3 +539,261 @@
     Siguiente
   </button>
 </div>
+@if (detalle(); as p) {
+  <div class="admin-overlay" (click)="detalle.set(null)">
+    <section
+      class="panel admin-dialog producto-detalle"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="producto-detalle-titulo"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="panel-heading">
+        <h2 id="producto-detalle-titulo">
+          Información del {{ p.tipo === 'SERVICIO' ? 'servicio' : 'artículo' }}
+        </h2>
+        <button
+          class="icon-btn"
+          type="button"
+          cdkFocusInitial
+          aria-label="Cerrar información"
+          (click)="detalle.set(null)"
+        >
+          <ps-icon name="close" />
+        </button>
+      </div>
+      <div class="panel-body">
+        <div class="producto-detalle-cabecera">
+          <ps-producto-imagen
+            class="producto-foto-preview"
+            [src]="p.fotoUrl"
+            [alt]="p.nombre"
+            [icon]="p.tipo === 'SERVICIO' ? 'printer' : 'box'"
+          />
+          <div>
+            <h3>{{ p.nombre }}</h3>
+            <span class="mono">{{ p.sku }}</span>
+          </div>
+        </div>
+        <dl class="producto-detalle-datos">
+          <div>
+            <dt>Categoría</dt>
+            <dd>{{ p.categoria }}</dd>
+          </div>
+          <div>
+            <dt>Unidad de venta</dt>
+            <dd>{{ p.unidad.replaceAll('_', ' ').toLowerCase() }}</dd>
+          </div>
+          <div>
+            <dt>Marca / referencia</dt>
+            <dd>{{ p.marca || 'Sin especificar' }}</dd>
+          </div>
+          <div>
+            <dt>Costo por unidad</dt>
+            <dd>
+              {{
+                p.precioCompra === undefined ? 'No disponible' : (p.precioCompra | currency: 'USD')
+              }}
+            </dd>
+          </div>
+          <div>
+            <dt>Precio de venta por unidad</dt>
+            <dd>{{ p.precioVenta | currency: 'USD' }}</dd>
+          </div>
+          @if (p.tipo !== 'SERVICIO') {
+            <div>
+              <dt>Existencias</dt>
+              <dd>{{ p.stock }} {{ p.unidad.toLowerCase() }}</dd>
+            </div>
+            <div>
+              <dt>Stock mínimo</dt>
+              <dd>{{ p.stockMinimo }}</dd>
+            </div>
+            <div>
+              <dt>Ubicación</dt>
+              <dd>{{ p.ubicacion || 'Sin especificar' }}</dd>
+            </div>
+          }
+          @if (p.caja; as caja) {
+            <div>
+              <dt>Unidades por caja</dt>
+              <dd>{{ caja.unidades }}</dd>
+            </div>
+            <div>
+              <dt>Costo de la caja</dt>
+              <dd>
+                {{
+                  caja.precioCompra === undefined
+                    ? 'No disponible'
+                    : (caja.precioCompra | currency: 'USD')
+                }}
+              </dd>
+            </div>
+            <div>
+              <dt>Venta por caja</dt>
+              <dd>
+                {{ caja.precioVenta ? (caja.precioVenta | currency: 'USD') : 'No habilitada' }}
+              </dd>
+            </div>
+            <div>
+              <dt>Equivalencia de existencias</dt>
+              <dd>
+                {{ cajasCompletas(p) }} caja(s) completas y {{ p.stock % caja.unidades }} unidades
+                sueltas
+              </dd>
+            </div>
+          }
+          <div class="field-wide">
+            <dt>Descripción</dt>
+            <dd>{{ p.descripcion || 'Sin descripción' }}</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+  </div>
+}
+@if (categoriasDialogo()) {
+  <div class="admin-overlay" (click)="cerrarCategorias()">
+    <section
+      class="panel admin-dialog categorias-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="categorias-titulo"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="panel-heading">
+        <div>
+          <h2 id="categorias-titulo">Categorías de productos y servicios</h2>
+          <p>Organiza el catálogo del negocio.</p>
+        </div>
+        <button
+          class="icon-btn"
+          type="button"
+          cdkFocusInitial
+          aria-label="Cerrar categorías"
+          (click)="cerrarCategorias()"
+          [disabled]="categoriaBusy()"
+        >
+          <ps-icon name="close" />
+        </button>
+      </div>
+      <div class="panel-body">
+        @if (categoriaMensaje()) {
+          <p class="notice notice-info" role="status">{{ categoriaMensaje() }}</p>
+        }
+        <form #categoriaForm="ngForm" (ngSubmit)="guardarCategoria()" class="categoria-form">
+          <label
+            >{{ categoriaEdicion ? 'Editar categoría' : 'Nueva categoría'
+            }}<input
+              name="nombreCategoria"
+              [(ngModel)]="categoriaNombre"
+              required
+              maxlength="80"
+              pattern=".*\S.*"
+              placeholder="Ej. Regalos"
+              [disabled]="categoriaBusy()"
+          /></label>
+          <div class="form-actions">
+            <button
+              class="btn btn-primary"
+              [disabled]="categoriaForm.invalid || categoriaBusy() || categoriasCargando()"
+            >
+              {{
+                categoriaBusy()
+                  ? 'Guardando…'
+                  : categoriaEdicion
+                    ? 'Guardar categoría'
+                    : 'Crear categoría'
+              }}
+            </button>
+            @if (categoriaEdicion) {
+              <button
+                class="btn btn-secondary"
+                type="button"
+                (click)="cancelarCategoria()"
+                [disabled]="categoriaBusy()"
+              >
+                Cancelar edición
+              </button>
+            }
+          </div>
+        </form>
+        @if (categoriasError()) {
+          <div class="notice notice-error" role="alert">{{ categoriasError() }}</div>
+        }
+        <button
+          class="btn btn-quiet btn-small"
+          type="button"
+          (click)="cargarCategorias()"
+          [disabled]="categoriaBusy() || categoriasCargando()"
+        >
+          Actualizar categorías
+        </button>
+        @if (categoriasCargando()) {
+          <p role="status">Cargando categorías…</p>
+        } @else {
+          <ul class="categorias-lista">
+            @for (c of categoriasPagina(); track c.id) {
+              <li>
+                <span
+                  >{{ c.nombre }}
+                  @if (!c.activo) {
+                    <small class="muted">· Inactiva</small>
+                  }
+                </span>
+                <div class="categoria-acciones">
+                  <button
+                    class="icon-btn"
+                    type="button"
+                    (click)="editarCategoria(c)"
+                    [disabled]="categoriaBusy()"
+                    [attr.aria-label]="'Editar categoría ' + c.nombre"
+                    title="Editar categoría"
+                  >
+                    <ps-icon name="edit" />
+                  </button>
+                  <button
+                    class="btn btn-quiet btn-small"
+                    type="button"
+                    (click)="cambiarEstadoCategoria(c)"
+                    [disabled]="categoriaBusy()"
+                  >
+                    {{ c.activo ? 'Desactivar' : 'Activar' }}
+                  </button>
+                </div>
+              </li>
+            } @empty {
+              <li>Aún no hay categorías. Crea la primera para agregar productos.</li>
+            }
+          </ul>
+          <div class="pagination" aria-label="Paginación de categorías">
+            <button
+              class="btn btn-secondary"
+              type="button"
+              (click)="categoriaPagina = categoriaPagina - 1"
+              [disabled]="categoriaPagina === 0"
+            >
+              Anterior
+            </button>
+            <span>Página {{ categoriaPagina + 1 }}</span>
+            <button
+              class="btn btn-secondary"
+              type="button"
+              (click)="categoriaPagina = categoriaPagina + 1"
+              [disabled]="(categoriaPagina + 1) * 6 >= categorias().length"
+            >
+              Siguiente
+            </button>
+          </div>
+        }
+        <p class="field-help">
+          Desactivar evita nuevas asignaciones y conserva los productos existentes.
+        </p>
+      </div>
+    </section>
+  </div>
+}

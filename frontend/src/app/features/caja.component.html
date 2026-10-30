@@ -276,7 +276,7 @@
       </div>
     </div>
     <div class="table-scroll">
-      <table>
+      <table class="responsive-table">
         <thead>
           <tr>
             <th>Fecha</th>
@@ -289,15 +289,15 @@
         <tbody>
           @for (m of registros()?.contenido; track m.id) {
             <tr>
-              <td>{{ m.fecha | date: 'dd/MM/yy HH:mm' : '-0600' }}</td>
-              <td>
+              <td data-label="Fecha">{{ m.fecha | date: 'dd/MM/yy HH:mm' : '-0600' }}</td>
+              <td data-label="Detalle">
                 <strong>{{
                   m.tipo === 'VENTA' ? 'Venta' : m.tipo === 'ENTRADA' ? 'Entrada' : 'Salida'
                 }}</strong>
                 <div class="caja-nota">{{ m.motivo }}</div>
               </td>
-              <td>{{ m.usuario }}</td>
-              <td>
+              <td data-label="Responsable">{{ m.usuario }}</td>
+              <td data-label="Medio">
                 {{
                   m.metodoPago === 'EFECTIVO'
                     ? 'Efectivo'
@@ -306,7 +306,9 @@
                       : 'Transferencia'
                 }}
               </td>
-              <td [class.quantity-out]="m.monto < 0">{{ m.monto | currency: 'USD' }}</td>
+              <td [class.quantity-out]="m.monto < 0" data-label="Importe">
+                {{ m.monto | currency: 'USD' }}
+              </td>
             </tr>
           } @empty {
             <tr>
@@ -350,7 +352,7 @@
     </div>
   </div>
   <div class="table-scroll">
-    <table>
+    <table class="responsive-table">
       <thead>
         <tr>
           <th>Jornada</th>
@@ -365,16 +367,20 @@
       <tbody>
         @for (c of historial()?.contenido; track c.id) {
           <tr>
-            <td>
+            <td data-label="Jornada">
               <strong>{{ c.apertura | date: 'dd/MM/yyyy' : '-0600' }}</strong>
               <small class="muted caja-referencia">Referencia #{{ c.id }}</small>
             </td>
-            <td>{{ c.apertura | date: 'HH:mm' : '-0600' }}</td>
-            <td>{{ c.cierre ? 'Cerrada' : 'Abierta' }}</td>
-            <td>{{ c.esperado | currency: 'USD' }}</td>
-            <td>{{ c.contado === null ? '—' : (c.contado | currency: 'USD') }}</td>
-            <td>{{ c.diferencia === null ? '—' : (c.diferencia | currency: 'USD') }}</td>
-            <td>
+            <td data-label="Hora de apertura">{{ c.apertura | date: 'HH:mm' : '-0600' }}</td>
+            <td data-label="Estado">{{ c.cierre ? 'Cerrada' : 'Abierta' }}</td>
+            <td data-label="Esperado">{{ c.esperado | currency: 'USD' }}</td>
+            <td data-label="Contado">
+              {{ c.contado === null ? '—' : (c.contado | currency: 'USD') }}
+            </td>
+            <td data-label="Diferencia">
+              {{ c.diferencia === null ? '—' : (c.diferencia | currency: 'USD') }}
+            </td>
+            <td data-label="Detalle">
               <button class="btn btn-quiet" (click)="cargar(c.id)" [disabled]="loading() || busy()">
                 Ver detalle
               </button>

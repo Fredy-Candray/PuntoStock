@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { CurrencyPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { IconComponent } from '../core/icon.component';
+import { ProductoImagenComponent } from '../core/producto-imagen.component';
 import { TicketComponent } from '../core/ticket.component';
 import { ApiService, AuthService, Cobro, MedioPago, Producto, Ticket } from '../core/api.service';
 import { totalCentavos } from '../core/dinero';
@@ -12,11 +13,20 @@ interface LineaCarrito {
   cantidad: number;
   observaciones: string;
   disponible: boolean;
+  presentacion?: 'UNIDAD' | 'CAJA';
 }
 @Component({
   standalone: true,
-  imports: [FormsModule, CurrencyPipe, RouterLink, IconComponent, TicketComponent],
+  imports: [
+    FormsModule,
+    CurrencyPipe,
+    RouterLink,
+    IconComponent,
+    TicketComponent,
+    ProductoImagenComponent,
+  ],
   templateUrl: './pos.component.html',
+  styleUrl: './pos.component.css',
 })
 export class PosComponent {
   readonly api = inject(ApiService);
@@ -164,6 +174,53 @@ export class PosComponent {
   servicio(p: Producto) {
     return p.tipo === 'SERVICIO';
   }
+  claveLinea(l: LineaCarrito) {
+    return l.producto.id + ':' + (l.presentacion ?? 'UNIDAD');
+  }
+  factor(l: LineaCarrito) {
+    return l.presentacion === 'CAJA' ? (l.producto.caja?.unidades ?? 0) : 1;
+  }
+  precioLinea(l: LineaCarrito) {
+    return l.presentacion === 'CAJA' ? (l.producto.caja?.precioVenta ?? 0) : l.producto.precioVenta;
+  }
+  cantidadConsumida(id: number, excepto?: LineaCarrito) {
+    return this.carrito()
+      .filter(
+        (l) =>
+          l.producto.id === id && (!excepto || this.claveLinea(l) !== this.claveLinea(excepto)),
+      )
+      .reduce((s, l) => s + l.cantidad * this.factor(l), 0);
+  }
+  maximoLinea(l: LineaCarrito) {
+    return this.servicio(l.producto)
+      ? 100000
+      : Math.max(
+          0,
+          Math.min(
+            100000,
+            Math.floor(
+              (l.producto.stock - this.cantidadConsumida(l.producto.id, l)) /
+                Math.max(1, this.factor(l)),
+            ),
+          ),
+        );
+  }
+  cajasDisponibles(p: Producto) {
+    const unidades = p.caja?.unidades ?? 0;
+    return this.servicio(p) || unidades < 2 || !p.caja?.precioVenta
+      ? 0
+      : Math.max(0, Math.floor((p.stock - this.cantidadConsumida(p.id)) / unidades));
+  }
+  lineaValida(l: LineaCarrito) {
+    return (
+      this.factor(l) > 0 &&
+      this.precioLinea(l) > 0 &&
+      Number.isInteger(l.cantidad) &&
+      l.cantidad > 0 &&
+      l.cantidad <= 100000 &&
+      (this.servicio(l.producto) || this.cantidadConsumida(l.producto.id) <= l.producto.stock)
+    );
+  }
   unidad(p: Producto) {
     return (
       (
@@ -199,16 +256,23 @@ export class PosComponent {
       this.buscador()?.nativeElement.focus();
     }
   }
-  agregar(p: Producto) {
+  agregar(p: Producto, presentacion: 'UNIDAD' | 'CAJA' = 'UNIDAD') {
     if (this.bloqueado()) return false;
-    if (p.precioVenta <= 0) {
+    const factor = presentacion === 'CAJA' ? (p.caja?.unidades ?? 0) : 1;
+    const precio = presentacion === 'CAJA' ? (p.caja?.precioVenta ?? 0) : p.precioVenta;
+    if (precio <= 0 || factor < 1) {
       this.aviso('Configura un precio de venta para ' + p.nombre + '.', true);
       return false;
     }
     const items = this.carrito().map((x) => ({ ...x })),
-      l = items.find((x) => x.producto.id === p.id),
+      l = items.find(
+        (x) => x.producto.id === p.id && (x.presentacion ?? 'UNIDAD') === presentacion,
+      ),
       cantidad = (l?.cantidad ?? 0) + 1;
-    if (cantidad > 100000 || (!this.servicio(p) && cantidad > p.stock)) {
+    if (
+      cantidad > 100000 ||
+      (!this.servicio(p) && this.cantidadConsumida(p.id) + factor > p.stock)
+    ) {
       this.aviso('No hay existencias suficientes de ' + p.nombre + '.', true);
       return false;
     }
@@ -217,29 +281,39 @@ export class PosComponent {
       return false;
     }
     if (l) l.cantidad = cantidad;
-    else items.push({ producto: p, cantidad: 1, observaciones: '', disponible: true });
+    else
+      items.push({ producto: p, cantidad: 1, observaciones: '', disponible: true, presentacion });
     this.carrito.set(items);
     this.limpiarAvisoBusqueda();
     return true;
   }
-  cantidad(id: number, value: unknown) {
+  cantidad(id: number, value: unknown, presentacion: 'UNIDAD' | 'CAJA' = 'UNIDAD') {
     if (this.bloqueado()) return;
     const n = Number(value),
-      l = this.carrito().find((x) => x.producto.id === id);
+      l = this.carrito().find(
+        (x) => x.producto.id === id && (x.presentacion ?? 'UNIDAD') === presentacion,
+      );
     if (!l) return;
     const cantidad = Number.isInteger(n) && n >= 1 && n <= 100000 ? n : 0;
-    this.carrito.update((xs) => xs.map((x) => (x.producto.id === id ? { ...x, cantidad } : x)));
-    if (!cantidad || (!this.servicio(l.producto) && cantidad > l.producto.stock))
+    this.carrito.update((xs) =>
+      xs.map((x) => (this.claveLinea(x) === this.claveLinea(l) ? { ...x, cantidad } : x)),
+    );
+    if (!cantidad || cantidad > this.maximoLinea(l))
       this.aviso('Revisa la cantidad y las existencias disponibles.', true);
   }
-  quitar(id: number) {
-    if (!this.bloqueado()) this.carrito.update((xs) => xs.filter((x) => x.producto.id !== id));
+  quitar(id: number, presentacion: 'UNIDAD' | 'CAJA' = 'UNIDAD') {
+    if (!this.bloqueado())
+      this.carrito.update((xs) =>
+        xs.filter((x) => !(x.producto.id === id && (x.presentacion ?? 'UNIDAD') === presentacion)),
+      );
   }
-  disminuir(id: number) {
-    const l = this.carrito().find((x) => x.producto.id === id);
+  disminuir(id: number, presentacion: 'UNIDAD' | 'CAJA' = 'UNIDAD') {
+    const l = this.carrito().find(
+      (x) => x.producto.id === id && (x.presentacion ?? 'UNIDAD') === presentacion,
+    );
     if (l) {
-      if (l.cantidad === 1) this.quitar(id);
-      else this.cantidad(id, l.cantidad - 1);
+      if (l.cantidad === 1) this.quitar(id, presentacion);
+      else this.cantidad(id, l.cantidad - 1, presentacion);
     }
   }
   vaciar() {
@@ -252,13 +326,18 @@ export class PosComponent {
     }
   }
   totalCentavos() {
-    return totalCentavos(this.carrito());
+    return totalCentavos(
+      this.carrito().map((l) => ({
+        cantidad: l.cantidad,
+        producto: { precioVenta: this.precioLinea(l) },
+      })),
+    );
   }
   total() {
     return this.totalCentavos() / 100;
   }
   unidades() {
-    return this.carrito().reduce((s, l) => s + l.cantidad, 0);
+    return this.carrito().reduce((s, l) => s + l.cantidad * this.factor(l), 0);
   }
   cambio() {
     return this.metodo === 'EFECTIVO' && this.recibido !== null
@@ -270,14 +349,7 @@ export class PosComponent {
       !!this.pendiente() ||
       (this.cajaAbierta() === true &&
         !!this.carrito().length &&
-        this.carrito().every(
-          (l) =>
-            l.disponible &&
-            l.producto.precioVenta > 0 &&
-            Number.isInteger(l.cantidad) &&
-            l.cantidad > 0 &&
-            (this.servicio(l.producto) || l.cantidad <= l.producto.stock),
-        ) &&
+        this.carrito().every((l) => l.disponible && this.lineaValida(l)) &&
         (this.metodo !== 'EFECTIVO' ||
           (this.recibido !== null &&
             Number.isFinite(this.recibido) &&
@@ -298,6 +370,9 @@ export class PosComponent {
           productoId: l.producto.id,
           cantidad: l.cantidad,
           observaciones: l.observaciones.trim(),
+          ...(l.presentacion === 'CAJA'
+            ? { presentacion: 'CAJA' as const, unidadesPorPresentacion: this.factor(l) }
+            : {}),
         })),
         metodoPago: this.metodo,
         recibido: this.metodo === 'EFECTIVO' ? this.recibido : null,

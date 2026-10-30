@@ -57,7 +57,7 @@ import { compartirComprobante } from './ticket-share';
               </tr>
             </thead>
             <tbody>
-              @for (l of ticket.lineas; track l.productoId) {
+              @for (l of ticket.lineas; track $index) {
                 <tr>
                   <td>
                     <strong>{{ l.nombre }}</strong
@@ -65,6 +65,9 @@ import { compartirComprobante } from './ticket-share';
                       >{{ l.sku }} · {{ l.cantidad }} ×
                       {{ l.precioUnitario | currency: 'USD' }}</small
                     >
+                    @if (l.presentacion === 'CAJA') {
+                      <small>Caja de {{ l.unidadesPorPresentacion }} unidades</small>
+                    }
                     @if (l.observaciones) {
                       <small>{{ l.observaciones }}</small>
                     }

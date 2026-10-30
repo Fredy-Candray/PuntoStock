@@ -32,7 +32,12 @@ public class ConsultasService {
       String unidad,
       String ubicacion,
       int stockMinimo,
-      BigDecimal precioCompra) {}
+      BigDecimal precioCompra,
+      CajaProductoVista caja) {}
+
+  @com.fasterxml.jackson.annotation.JsonInclude(
+      com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+  public record CajaProductoVista(int unidades, BigDecimal precioCompra, BigDecimal precioVenta) {}
 
   public record MovimientoVista(
       Long id,
@@ -74,7 +79,11 @@ public class ConsultasService {
         p.unidad,
         p.ubicacion,
         p.stockMinimo,
-        admin ? p.precioCompra : null);
+        admin ? p.precioCompra : null,
+        p.unidadesPorCaja == null
+            ? null
+            : new CajaProductoVista(
+                p.unidadesPorCaja, admin ? p.precioCompraCaja : null, p.precioVentaCaja));
   }
 
   public static MovimientoVista movimiento(Movimiento m) {

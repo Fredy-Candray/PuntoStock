@@ -96,7 +96,7 @@
         /></a>
       </div>
       <div class="table-scroll">
-        <table>
+        <table class="responsive-table">
           <thead>
             <tr>
               <th>Producto</th>
@@ -107,7 +107,7 @@
           <tbody>
             @for (m of movimientos().slice(0, 5); track m.id) {
               <tr>
-                <td>
+                <td data-label="Producto">
                   <div class="cell-primary">
                     <div>
                       <strong>{{ nombreProducto(m.productoId) }}</strong
@@ -115,10 +115,14 @@
                     </div>
                   </div>
                 </td>
-                <td>
+                <td data-label="Movimiento">
                   <span class="movement-label">{{ m.tipo.replaceAll('_', ' ') }}</span>
                 </td>
-                <td [class.quantity-in]="m.cantidad > 0" [class.quantity-out]="m.cantidad < 0">
+                <td
+                  data-label="Cantidad"
+                  [class.quantity-in]="m.cantidad > 0"
+                  [class.quantity-out]="m.cantidad < 0"
+                >
                   {{ m.cantidad > 0 ? '+' : '' }}{{ m.cantidad }}
                 </td>
               </tr>
@@ -146,7 +150,7 @@
         <ps-icon name="box" />
       </div>
       <div class="table-scroll">
-        <table>
+        <table class="responsive-table">
           <thead>
             <tr>
               <th>Producto</th>
@@ -156,7 +160,7 @@
           <tbody>
             @for (p of bajoStock().slice(0, 5); track p.id) {
               <tr>
-                <td>
+                <td data-label="Producto">
                   <div class="cell-primary">
                     <div>
                       <strong>{{ p.nombre }}</strong
@@ -164,7 +168,7 @@
                     </div>
                   </div>
                 </td>
-                <td>
+                <td data-label="Disponibles">
                   <span class="stock-tag" [class.low]="p.stock > 0" [class.empty]="p.stock === 0"
                     >{{ p.stock }} uds.</span
                   >
@@ -225,7 +229,7 @@
       </div>
       @if (agotados().length) {
         <div class="table-scroll">
-          <table>
+          <table class="responsive-table">
             <thead>
               <tr>
                 <th>Artículo</th>
@@ -236,7 +240,7 @@
             <tbody>
               @for (p of agotadosVisibles(); track p.id) {
                 <tr>
-                  <td>
+                  <td data-label="Artículo">
                     <div class="cell-primary">
                       <div>
                         <strong>{{ p.nombre }}</strong
@@ -244,8 +248,8 @@
                       </div>
                     </div>
                   </td>
-                  <td class="mono">{{ p.sku }}</td>
-                  <td><span class="stock-tag empty">0 unidades</span></td>
+                  <td class="mono" data-label="Código">{{ p.sku }}</td>
+                  <td data-label="Existencias"><span class="stock-tag empty">0 unidades</span></td>
                 </tr>
               }
             </tbody>

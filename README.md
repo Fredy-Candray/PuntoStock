@@ -20,7 +20,7 @@ Requisitos: JDK 21, Maven >=3.6.3, Node 22.22.3+ o 24.15+ compatible con Angular
 Para alinear la instalación de Java en Windows, ejecuta `pwsh -NoProfile -File scripts/Set-Java21.ps1`. El parámetro `-SystemPath` requiere una terminal como administrador y prioriza JDK 21 en el PATH del sistema. Se conserva un respaldo local en `.cache/local`. Cierra y abre terminales e IDE después del cambio; `java -version`, `javac -version` y `mvn -version` deben mostrar Java 21. En IntelliJ selecciona el SDK `ms-21` del proyecto y ese mismo JDK para Maven. El archivo `.java-version` declara la versión mayor del proyecto.
 
 
-1. Para este entorno Windows, ejecutar `scripts/Initialize-Local.ps1` y después `scripts/Migrate-Local.ps1`. La migración crea y verifica un respaldo antes de adoptar explícitamente la versión histórica 6 y actualizar. Para una base vacía en otro entorno, ejecutar Flyway V1-V8 con una cuenta de migración; la cuenta de aplicación conserva solo DML. No activar baseline automático ni editar migraciones aplicadas. Consultar `docs/estabilidad.md`.
+1. Para este entorno Windows, ejecutar `scripts/Initialize-Local.ps1` y después `scripts/Migrate-Local.ps1`. La migración crea y verifica un respaldo antes de adoptar explícitamente la versión histórica 6 y actualizar. Para una base vacía en otro entorno, ejecutar Flyway V1-V11 con una cuenta de migración; la cuenta de aplicación conserva solo DML. No activar baseline automático ni editar migraciones aplicadas. Consultar `docs/estabilidad.md`.
 2. Configurar las variables en la terminal del backend (sustituir los valores):
 
 ```powershell

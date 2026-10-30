@@ -251,6 +251,10 @@ class SqlServerIT {
                     actuales.add(method.name() + "\t" + path + "\t" + permiso);
             });
     assertEquals(32, esperadas.size());
+    esperadas.add("GET\t/api/productos/categorias\thasRole('ADMIN')");
+    esperadas.add("POST\t/api/productos/categorias\thasRole('ADMIN')");
+    esperadas.add("PUT\t/api/productos/categorias/{id}\thasRole('ADMIN')");
+    esperadas.add("GET\t/api/productos/{id}/imagen\tsecurity-global");
     assertEquals(esperadas, actuales);
   }
 
@@ -266,6 +270,78 @@ class SqlServerIT {
   }
 
   @Test
+  void codigosAutomaticosPersistenYAltasConcurrentesNoSeDuplican() throws Exception {
+    var l = login("qa.admin");
+    var mapper = new tools.jackson.databind.ObjectMapper();
+    String body =
+        "{\"nombre\":\"Cuaderno automático\",\"descripcion\":\"Prueba SQL\",\"precioCompra\":1,\"precioVenta\":2,\"categoria\":\"Papelería\",\"existenciasIniciales\":5}";
+    var pool = Executors.newFixedThreadPool(2);
+    var start = new CountDownLatch(1);
+    try {
+      var futures = new ArrayList<Future<HttpResponse<String>>>();
+      for (int i = 0; i < 2; i++)
+        futures.add(
+            pool.submit(
+                () -> {
+                  start.await();
+                  return enviar(l, "POST", "/api/productos", body);
+                }));
+      start.countDown();
+      Set<String> codigos = new HashSet<>();
+      for (var f : futures) {
+        var response = f.get(40, TimeUnit.SECONDS);
+        assertEquals(200, response.statusCode(), response.body());
+        var created = mapper.readTree(response.body());
+        long id = created.get("id").asLong();
+        String sku = created.get("sku").asString();
+        assertEquals("ART-PAP-CUA-" + String.format(java.util.Locale.ROOT, "%06d", id), sku);
+        assertTrue(codigos.add(sku));
+        assertEquals(
+            sku, sql.queryForObject("SELECT sku FROM productos WHERE id=?", String.class, id));
+        assertEquals(
+            5, sql.queryForObject("SELECT stock FROM productos WHERE id=?", Integer.class, id));
+        var edit =
+            new HashMap<String, Object>(
+                Map.of(
+                    "sku",
+                    sku,
+                    "nombre",
+                    "Otro nombre",
+                    "descripcion",
+                    "Editado",
+                    "precioCompra",
+                    1,
+                    "precioVenta",
+                    2,
+                    "categoria",
+                    "General"));
+        var edited = enviar(l, "PUT", "/api/productos/" + id, mapper.writeValueAsString(edit));
+        assertEquals(200, edited.statusCode(), edited.body());
+        assertEquals(sku, mapper.readTree(edited.body()).get("sku").asString());
+        edit.put("sku", "");
+        assertEquals(
+            400,
+            enviar(l, "PUT", "/api/productos/" + id, mapper.writeValueAsString(edit)).statusCode());
+      }
+      assertEquals(2, codigos.size());
+      var service =
+          enviar(
+              l,
+              "POST",
+              "/api/productos",
+              body.replace("\"existenciasIniciales\":5", "\"tipo\":\"SERVICIO\""));
+      assertEquals(200, service.statusCode(), service.body());
+      assertTrue(mapper.readTree(service.body()).get("sku").asString().startsWith("SRV-PAP-CUA-"));
+      assertEquals(
+          0,
+          sql.queryForObject(
+              "SELECT COUNT(*) FROM productos WHERE sku LIKE '__PS_AUTO_%'", Integer.class));
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
+  @Test
   void flujoHttpDeCatalogoInventarioVentaYReporteMantieneContratos() throws Exception {
     var l = login("qa.admin");
     var mapper = new tools.jackson.databind.ObjectMapper();
@@ -277,7 +353,8 @@ class SqlServerIT {
     var creado = enviar(l, "POST", "/api/productos", alta);
     assertEquals(200, creado.statusCode(), creado.body());
     var respuesta = mapper.readTree(creado.body());
-    assertEquals(1, respuesta.size());
+    assertEquals(2, respuesta.size());
+    assertEquals(sku, respuesta.get("sku").asString());
     long id = Long.parseLong(respuesta.get("id").toString());
     assertEquals(
         0, sql.queryForObject("select stock from productos where id=?", Integer.class, id));
@@ -602,10 +679,401 @@ class SqlServerIT {
     assertTrue(menu.contains("Mi tienda"));
     assertTrue(menu.contains("/caja"));
     assertEquals(
-        8,
+        11,
         db.queryForObject(
             "SELECT MAX(TRY_CONVERT(int,version)) FROM flyway_schema_history WHERE success=1",
             Integer.class));
+    assertEquals(
+        1,
+        db.queryForObject(
+            "SELECT COUNT(*) FROM categorias_productos WHERE nombre=N'General'", Integer.class));
+  }
+
+  @Test
+  void imagenLocalSeGuardaSeConsultaConPermisoYSePuedeQuitar() throws Exception {
+    var l = login("qa.admin");
+    var mapper = new tools.jackson.databind.ObjectMapper();
+    var salida = new java.io.ByteArrayOutputStream();
+    javax.imageio.ImageIO.write(
+        new java.awt.image.BufferedImage(2, 2, java.awt.image.BufferedImage.TYPE_INT_RGB),
+        "png",
+        salida);
+    byte[] bytes = salida.toByteArray();
+    String data = "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes);
+    String sku = "FOTO-" + UUID.randomUUID();
+    var body =
+        new HashMap<String, Object>(
+            Map.of(
+                "sku",
+                sku,
+                "nombre",
+                "Producto con imagen",
+                "descripcion",
+                "Prueba SQL",
+                "precioCompra",
+                1,
+                "precioVenta",
+                2,
+                "imagen",
+                data,
+                "existenciasIniciales",
+                4));
+    var alta = enviar(l, "POST", "/api/productos", mapper.writeValueAsString(body));
+    assertEquals(200, alta.statusCode(), alta.body());
+    long id = mapper.readTree(alta.body()).get("id").asLong();
+    String url = sql.queryForObject("SELECT foto_url FROM productos WHERE id=?", String.class, id);
+    assertTrue(url.startsWith("/api/productos/" + id + "/imagen?v="));
+    assertArrayEquals(
+        bytes,
+        sql.queryForObject(
+            "SELECT contenido FROM producto_imagenes WHERE producto_id=?", byte[].class, id));
+    assertEquals(
+        4, sql.queryForObject("SELECT stock FROM productos WHERE id=?", Integer.class, id));
+    var foto =
+        l.client.send(
+            HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + url))
+                .header("Authorization", "Bearer " + l.token)
+                .GET()
+                .build(),
+            HttpResponse.BodyHandlers.ofByteArray());
+    assertEquals(200, foto.statusCode());
+    assertArrayEquals(bytes, foto.body());
+    assertEquals("image/png", foto.headers().firstValue("Content-Type").orElse(""));
+    assertTrue(foto.headers().firstValue("Cache-Control").orElse("").contains("no-store"));
+    var anon =
+        HttpClient.newHttpClient()
+            .send(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + url)).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+    assertEquals(401, anon.statusCode());
+    var vendor = login("qa.vendor");
+    assertEquals(200, get(vendor, "/api/productos/" + id + "/imagen").statusCode());
+    body.remove("imagen");
+    body.put("fotoUrl", url);
+    body.put("existenciasIniciales", 0);
+    assertEquals(
+        200,
+        enviar(l, "PUT", "/api/productos/" + id, mapper.writeValueAsString(body)).statusCode());
+    assertEquals(
+        1,
+        sql.queryForObject(
+            "SELECT COUNT(*) FROM producto_imagenes WHERE producto_id=?", Integer.class, id));
+    body.put("imagen", data);
+    assertEquals(
+        403,
+        enviar(vendor, "PUT", "/api/productos/" + id, mapper.writeValueAsString(body))
+            .statusCode());
+    var reemplazo = enviar(l, "PUT", "/api/productos/" + id, mapper.writeValueAsString(body));
+    assertEquals(200, reemplazo.statusCode(), reemplazo.body());
+    String nueva =
+        sql.queryForObject("SELECT foto_url FROM productos WHERE id=?", String.class, id);
+    assertNotEquals(url, nueva);
+    body.remove("imagen");
+    body.put("fotoUrl", nueva);
+    body.put("quitarImagen", true);
+    assertEquals(
+        200,
+        enviar(l, "PUT", "/api/productos/" + id, mapper.writeValueAsString(body)).statusCode());
+    assertEquals(
+        0,
+        sql.queryForObject(
+            "SELECT COUNT(*) FROM producto_imagenes WHERE producto_id=?", Integer.class, id));
+    assertEquals(
+        "/assets/producto.svg",
+        sql.queryForObject("SELECT foto_url FROM productos WHERE id=?", String.class, id));
+    assertEquals(404, get(l, "/api/productos/" + id + "/imagen").statusCode());
+    body.remove("quitarImagen");
+    body.put("sku", sku + "-INVALIDA");
+    body.put("fotoUrl", "");
+    body.put("imagen", "data:image/png;base64,aG9sYQ==");
+    assertEquals(
+        400, enviar(l, "POST", "/api/productos", mapper.writeValueAsString(body)).statusCode());
+    assertEquals(
+        0,
+        sql.queryForObject(
+            "SELECT COUNT(*) FROM productos WHERE sku=?", Integer.class, sku + "-INVALIDA"));
+  }
+
+  @Test
+  void compraCajaVentaMixtaReintentoYComprobanteHistorico() throws Exception {
+    var l = login("qa.admin");
+    var mapper = new tools.jackson.databind.ObjectMapper();
+    var producto =
+        new HashMap<String, Object>(
+            Map.of(
+                "sku",
+                "CAJA-" + UUID.randomUUID(),
+                "nombre",
+                "Lápices por caja",
+                "descripcion",
+                "Prueba SQL",
+                "precioCompra",
+                999,
+                "precioVenta",
+                1,
+                "tipo",
+                "PRODUCTO",
+                "unidad",
+                "UNIDAD",
+                "categoria",
+                "Papelería",
+                "existenciasIniciales",
+                3));
+    producto.put(
+        "caja", Map.of("unidades", 12, "precioCompra", 6, "precioVenta", 8, "cajasIniciales", 2));
+    var alta = enviar(l, "POST", "/api/productos", mapper.writeValueAsString(producto));
+    assertEquals(200, alta.statusCode(), alta.body());
+    long id = mapper.readTree(alta.body()).get("id").asLong();
+    assertEquals(
+        27, sql.queryForObject("SELECT stock FROM productos WHERE id=?", Integer.class, id));
+    assertEquals(
+        0,
+        new BigDecimal("0.50")
+            .compareTo(
+                sql.queryForObject(
+                    "SELECT precio_compra FROM productos WHERE id=?", BigDecimal.class, id)));
+    var vendor = login("qa.vendor");
+    assertFalse(get(vendor, "/api/productos").body().contains("precioCompra"));
+    var cobro =
+        new HashMap<String, Object>(
+            Map.of(
+                "lineas",
+                List.of(
+                    Map.of(
+                        "productoId",
+                        id,
+                        "cantidad",
+                        1,
+                        "presentacion",
+                        "CAJA",
+                        "unidadesPorPresentacion",
+                        12),
+                    Map.of("productoId", id, "cantidad", 3)),
+                "metodoPago",
+                "EFECTIVO",
+                "recibido",
+                11,
+                "totalEsperado",
+                11,
+                "solicitudId",
+                UUID.randomUUID().toString()));
+    String body = mapper.writeValueAsString(cobro);
+    var venta = enviar(l, "POST", "/api/ventas", body);
+    assertEquals(200, venta.statusCode(), venta.body());
+    var ticket = mapper.readTree(venta.body());
+    long ventaId = ticket.get("id").asLong();
+    assertEquals(
+        12, sql.queryForObject("SELECT stock FROM productos WHERE id=?", Integer.class, id));
+    assertEquals(
+        2,
+        sql.queryForObject(
+            "SELECT COUNT(*) FROM detalle_venta WHERE venta_id=?", Integer.class, ventaId));
+    assertEquals(
+        -15,
+        sql.queryForObject(
+            "SELECT SUM(cantidad) FROM movimientos_inventario WHERE venta_id=?",
+            Integer.class,
+            ventaId));
+    assertEquals(200, enviar(l, "POST", "/api/ventas", body).statusCode());
+    assertEquals(
+        12, sql.queryForObject("SELECT stock FROM productos WHERE id=?", Integer.class, id));
+    producto.put(
+        "caja", Map.of("unidades", 24, "precioCompra", 12, "precioVenta", 10, "cajasIniciales", 0));
+    producto.put("existenciasIniciales", 0);
+    assertEquals(
+        200,
+        enviar(l, "PUT", "/api/productos/" + id, mapper.writeValueAsString(producto)).statusCode());
+    var historico = mapper.readTree(get(l, "/api/ventas/" + ventaId).body());
+    assertEquals("CAJA", historico.get("lineas").get(0).get("presentacion").asString());
+    assertEquals(12, historico.get("lineas").get(0).get("unidadesPorPresentacion").asInt());
+    assertEquals(
+        0,
+        new BigDecimal("8.00")
+            .compareTo(historico.get("lineas").get(0).get("precioUnitario").decimalValue()));
+    cobro.put("solicitudId", UUID.randomUUID().toString());
+    assertEquals(
+        409, enviar(l, "POST", "/api/ventas", mapper.writeValueAsString(cobro)).statusCode());
+    var entrada =
+        enviar(
+            l,
+            "POST",
+            "/api/inventario/movimientos",
+            mapper.writeValueAsString(
+                Map.of(
+                    "productoId",
+                    id,
+                    "tipo",
+                    "COMPRA",
+                    "cantidad",
+                    1,
+                    "motivo",
+                    "Otra caja",
+                    "presentacion",
+                    "CAJA",
+                    "unidadesPorPresentacion",
+                    24)));
+    assertEquals(200, entrada.statusCode(), entrada.body());
+    assertEquals(
+        36, sql.queryForObject("SELECT stock FROM productos WHERE id=?", Integer.class, id));
+    var pool = Executors.newFixedThreadPool(2);
+    var inicio = new CountDownLatch(1);
+    try {
+      var futuros = new ArrayList<Future<Integer>>();
+      for (int n = 0; n < 2; n++)
+        futuros.add(
+            pool.submit(
+                () -> {
+                  inicio.await();
+                  return enviar(
+                          l,
+                          "POST",
+                          "/api/ventas",
+                          mapper.writeValueAsString(
+                              Map.of(
+                                  "lineas",
+                                  List.of(
+                                      Map.of(
+                                          "productoId",
+                                          id,
+                                          "cantidad",
+                                          1,
+                                          "presentacion",
+                                          "CAJA",
+                                          "unidadesPorPresentacion",
+                                          24)),
+                                  "totalEsperado",
+                                  10,
+                                  "solicitudId",
+                                  UUID.randomUUID().toString())))
+                      .statusCode();
+                }));
+      inicio.countDown();
+      var estados = new ArrayList<Integer>();
+      for (var f : futuros) estados.add(f.get(40, TimeUnit.SECONDS));
+      Collections.sort(estados);
+      assertEquals(List.of(200, 409), estados);
+      assertEquals(
+          12, sql.queryForObject("SELECT stock FROM productos WHERE id=?", Integer.class, id));
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
+  @Test
+  void categoriasPersistenRenombranYRestringenAsignaciones() throws Exception {
+    var l = login("qa.admin");
+    var vendor = login("qa.vendor");
+    var mapper = new tools.jackson.databind.ObjectMapper();
+    String nombre = "Regalos-" + UUID.randomUUID();
+    var create =
+        enviar(
+            l,
+            "POST",
+            "/api/productos/categorias",
+            mapper.writeValueAsString(Map.of("nombre", nombre, "activo", true)));
+    assertEquals(200, create.statusCode(), create.body());
+    var c = mapper.readTree(create.body());
+    long id = c.get("id").asLong();
+    assertTrue(get(l, "/api/productos/categorias").body().contains(nombre));
+    assertEquals(403, get(vendor, "/api/productos/categorias").statusCode());
+    assertEquals(
+        403,
+        enviar(
+                vendor,
+                "POST",
+                "/api/productos/categorias",
+                mapper.writeValueAsString(Map.of("nombre", "Prohibida", "activo", true)))
+            .statusCode());
+    assertEquals(
+        409,
+        enviar(
+                l,
+                "POST",
+                "/api/productos/categorias",
+                mapper.writeValueAsString(Map.of("nombre", nombre.toLowerCase(), "activo", true)))
+            .statusCode());
+    assertEquals(
+        400,
+        enviar(l, "POST", "/api/productos/categorias", "{\"nombre\":\"   \",\"activo\":true}")
+            .statusCode());
+    String sku = "categoria-" + UUID.randomUUID();
+    Map<String, Object> producto =
+        new HashMap<>(
+            Map.of(
+                "sku",
+                sku,
+                "nombre",
+                "Regalo SQL",
+                "descripcion",
+                "Prueba",
+                "precioCompra",
+                1,
+                "precioVenta",
+                2,
+                "categoria",
+                nombre,
+                "existenciasIniciales",
+                12));
+    var alta = enviar(l, "POST", "/api/productos", mapper.writeValueAsString(producto));
+    assertEquals(200, alta.statusCode(), alta.body());
+    long pid = mapper.readTree(alta.body()).get("id").asLong();
+    assertEquals(
+        12, sql.queryForObject("SELECT stock FROM productos WHERE id=?", Integer.class, pid));
+    assertEquals(
+        1,
+        sql.queryForObject(
+            "SELECT COUNT(*) FROM movimientos_inventario WHERE producto_id=? AND cantidad=12 AND usuario_id=?",
+            Integer.class,
+            pid,
+            admin));
+    String renombrada = nombre + "-nuevo";
+    var rename =
+        enviar(
+            l,
+            "PUT",
+            "/api/productos/categorias/" + id,
+            mapper.writeValueAsString(
+                Map.of(
+                    "nombre", renombrada, "activo", true, "version", c.get("version").asLong())));
+    assertEquals(200, rename.statusCode(), rename.body());
+    var actualizado = mapper.readTree(rename.body());
+    assertEquals(
+        renombrada,
+        sql.queryForObject("SELECT categoria FROM productos WHERE id=?", String.class, pid));
+    var deactivate =
+        enviar(
+            l,
+            "PUT",
+            "/api/productos/categorias/" + id,
+            mapper.writeValueAsString(
+                Map.of(
+                    "nombre",
+                    renombrada,
+                    "activo",
+                    false,
+                    "version",
+                    actualizado.get("version").asLong())));
+    assertEquals(200, deactivate.statusCode(), deactivate.body());
+    producto.put("categoria", renombrada);
+    producto.put("existenciasIniciales", 0);
+    assertEquals(
+        200,
+        enviar(l, "PUT", "/api/productos/" + pid, mapper.writeValueAsString(producto))
+            .statusCode());
+    producto.put("sku", sku + "-otra");
+    producto.put("existenciasIniciales", 10);
+    assertEquals(
+        409, enviar(l, "POST", "/api/productos", mapper.writeValueAsString(producto)).statusCode());
+    assertEquals(
+        0,
+        sql.queryForObject(
+            "SELECT COUNT(*) FROM productos WHERE sku=?", Integer.class, sku + "-otra"));
+    assertEquals(
+        403,
+        enviar(vendor, "PUT", "/api/productos/categorias/" + id, deactivate.body()).statusCode());
+    assertThrows(
+        org.springframework.dao.DataIntegrityViolationException.class,
+        () -> sql.update("UPDATE productos SET categoria=N'No registrada' WHERE id=?", pid));
   }
 
   private sv.puntostock.application.CajaContratos.Resumen nuevaCaja(String inicial) {

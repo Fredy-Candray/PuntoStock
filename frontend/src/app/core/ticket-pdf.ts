@@ -87,6 +87,8 @@ export function crearComprobantePdf(ticket: Ticket): jsPDF {
     fuente(10, true);
     pdf.text(dinero(linea.subtotal), derecha, y, { align: 'right' });
     escribir(linea.nombre, 10, true, 88);
+    if (linea.presentacion === 'CAJA')
+      escribir('Caja de ' + linea.unidadesPorPresentacion + ' unidades', 9, false, 88);
     escribir(
       linea.sku + ' | ' + linea.cantidad + ' x ' + dinero(linea.precioUnitario),
       9,
