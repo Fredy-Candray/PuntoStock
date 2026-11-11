@@ -33,8 +33,7 @@ export class LoginComponent {
       this.username = fragment.get('usuario') ?? '';
       this.recuperacion.set('restablecer');
       history.replaceState(null, '', location.pathname + location.search);
-    } else if (this.auth.token())
-      void this.router.navigateByUrl(this.auth.admin() ? '/dashboard' : '/pos');
+    } else if (this.auth.token()) void this.router.navigateByUrl(this.auth.destinoInicio());
   }
   abrirRecuperacion() {
     this.error.set('');
@@ -56,11 +55,11 @@ export class LoginComponent {
     if (
       restablecer &&
       (this.nuevaClave !== this.confirmacion ||
-        this.nuevaClave.length < 12 ||
+        this.nuevaClave.length < 8 ||
         new TextEncoder().encode(this.nuevaClave).length > 72)
     ) {
       this.error.set(
-        'Las contraseñas deben coincidir y tener al menos 12 caracteres y como máximo 72 bytes.',
+        'Las contraseñas deben coincidir y tener al menos 8 caracteres y como máximo 72 bytes.',
       );
       return;
     }
@@ -107,7 +106,7 @@ export class LoginComponent {
         this.auth.iniciarSesion(r, this.username.trim(), this.rememberMe);
         this.busy.set(false);
         this.password = '';
-        void this.router.navigateByUrl(this.auth.admin() ? '/dashboard' : '/pos');
+        void this.router.navigateByUrl(this.auth.destinoInicio());
       },
       error: (e: HttpErrorResponse) => {
         this.busy.set(false);

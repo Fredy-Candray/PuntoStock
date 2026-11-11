@@ -1,5 +1,7 @@
 # Contrato HTTP vigente
 
+El restablecimiento local de vendedores y el cambio obligatorio de contraseña se describen en [Restablecer clave de vendedores](restablecer-clave-vendedores.md). Agrega `POST /api/usuarios/{id}/restablecer-clave` (ADMIN) y `POST /api/auth/cambiar-clave-inicial` (sesión limitada). Login y renovación incluyen el indicador `cambioClavePendiente`.
+
 Mismo origen que la interfaz. Prefijo `/api`. Los importes son USD, dos decimales y cantidades enteras. Los costos solo se incluyen para ADMIN. Nunca se devuelven hashes, renovaciones ni tokens de recuperación en consultas de perfil o usuarios.
 
 | Ruta | Acceso | Entrada / salida |

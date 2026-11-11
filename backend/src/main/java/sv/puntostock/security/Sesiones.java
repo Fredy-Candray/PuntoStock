@@ -17,7 +17,16 @@ import sv.puntostock.repository.UsuarioRepository;
 
 @Service
 public class Sesiones {
-  public record Acceso(String accessToken, long expiresIn, List<String> roles, String username) {}
+  public record Acceso(
+      String accessToken,
+      long expiresIn,
+      List<String> roles,
+      String username,
+      boolean cambioClavePendiente) {
+    public Acceso(String accessToken, long expiresIn, List<String> roles, String username) {
+      this(accessToken, expiresIn, roles, username, false);
+    }
+  }
 
   public record Emitida(Acceso acceso, String renovacion, boolean recordar) {}
 
@@ -107,7 +116,12 @@ public class Sesiones {
         jwt.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
             .getTokenValue();
     return new Emitida(
-        new Acceso(token, 900, usuarios.rolesAcceso(u.getId()), u.getUsername()),
+        new Acceso(
+            token,
+            900,
+            usuarios.rolesAcceso(u.getId()),
+            u.getUsername(),
+            u.getCambioClavePendiente()),
         id + "." + secreto,
         recordar);
   }

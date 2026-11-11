@@ -37,12 +37,21 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     }),
   );
 };
-export const authGuard: CanActivateFn = () => {
+export const authGuard: CanActivateFn = (route) => {
   const auth = inject(AuthService),
     router = inject(Router);
+  const destino = () => {
+    if (auth.cambioClavePendiente())
+      return route.routeConfig?.path === 'cambiar-clave'
+        ? true
+        : router.createUrlTree(['/cambiar-clave']);
+    return route.routeConfig?.path === 'cambiar-clave'
+      ? router.parseUrl(auth.destinoInicio())
+      : true;
+  };
   return auth.token()
-    ? true
-    : auth.restaurar().pipe(map((s) => (s ? true : router.createUrlTree(['/login']))));
+    ? destino()
+    : auth.restaurar().pipe(map((s) => (s ? destino() : router.createUrlTree(['/login']))));
 };
 export const adminGuard: CanActivateFn = () =>
   inject(AuthService).admin() ? true : inject(Router).createUrlTree(['/pos']);

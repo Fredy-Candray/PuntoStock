@@ -1,6 +1,7 @@
-param([string]$Instance='localhost\SQLEXPRESS',[switch]$ValidateOnly)
+param([string]$Instance='localhost\SQLEXPRESS',[switch]$ValidateOnly,[switch]$Offline)
 $ErrorActionPreference='Stop'
 $taskRoot=Split-Path $PSScriptRoot -Parent
+$taskOfflineArgs=@();if($Offline){$taskOfflineArgs=@('-o')}
 $taskSettings=Import-Clixml (Join-Path $taskRoot '.cache/local/secrets.clixml')
 if($taskSettings.Instance -ne $Instance -or $taskSettings.Database -ne 'PuntoStock' -or $taskSettings.DbUser -ne 'puntostock_local_app'){throw 'La configuración no corresponde a PuntoStock local.'}
 $taskDb=New-Object System.Data.SqlClient.SqlConnection("Server=$Instance;Database=PuntoStock;Integrated Security=True;TrustServerCertificate=True;Connect Timeout=10")
@@ -36,7 +37,7 @@ try {
  $env:FLYWAY_PASSWORD=[Net.NetworkCredential]::new('', $taskSettings.DbPassword).Password
  $env:JAVA_HOME=Join-Path $env:USERPROFILE '.jdks/ms-21.0.11'
  Push-Location (Join-Path $taskRoot 'backend')
- try{& mvn.cmd -B '-Dmaven.repo.local=../.cache/m2' '-Dflyway.locations=filesystem:src/main/resources/db/migration' '-Dflyway.baselineOnMigrate=true' '-Dflyway.baselineVersion=6' flyway:migrate;if($LASTEXITCODE -ne 0){throw 'La migración falló. Se conserva el respaldo; no iniciar la nueva versión.'}}finally{Pop-Location}
+ try{& mvn.cmd -B @taskOfflineArgs '-Dmaven.repo.local=../.cache/m2' '-Dflyway.locations=filesystem:src/main/resources/db/migration' '-Dflyway.baselineOnMigrate=true' '-Dflyway.baselineVersion=6' flyway:migrate;if($LASTEXITCODE -ne 0){throw 'La migración falló. Se conserva el respaldo; no iniciar la nueva versión.'}}finally{Pop-Location}
  Write-Output 'Migraciones aplicadas; respaldo verificado. No se borraron ventas, productos ni usuarios.'
 }finally {
  if($taskGranted){[void](Query-Migration 'ALTER ROLE db_ddladmin DROP MEMBER [puntostock_local_app]; REVOKE REFERENCES ON SCHEMA::dbo FROM [puntostock_local_app];')}

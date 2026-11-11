@@ -10,7 +10,7 @@ Ejecutar `database/006_menu_administrable.sql` después de las migraciones anter
 
 Solo un administrador puede listar, consultar, crear, editar, desactivar o reactivar cuentas. El directorio permite buscar por nombre, usuario o correo y filtrar por rol y estado; muestra fecha de alta, contacto y foto al consultar un perfil.
 
-Las contraseñas nuevas requieren al menos 12 caracteres y como máximo 72 bytes UTF-8. Al editar, una contraseña vacía conserva la actual. Las respuestas nunca contienen contraseñas ni hashes. Cambiar contraseña, nombre de usuario, rol o estado revoca las sesiones anteriores. Cambiar el correo invalida los enlaces de recuperación pendientes.
+Las contraseñas nuevas requieren al menos 8 caracteres y como máximo 72 bytes UTF-8. Al editar, una contraseña vacía conserva la actual. Las respuestas nunca contienen contraseñas ni hashes. Cambiar contraseña, nombre de usuario, rol o estado revoca las sesiones anteriores. Cambiar el correo invalida los enlaces de recuperación pendientes.
 
 La desactivación es lógica: conserva ventas, movimientos y perfil. Una reactivación requiere un nuevo ingreso. No se permite desactivar la propia cuenta, cambiar su identificador ni quitarse el rol de administrador desde este módulo. La administración de cuentas serializa los cambios sobre el rol ADMIN y vuelve a comprobar al actor después de tomar el bloqueo, para impedir que dos administradores se desactiven entre sí simultáneamente y dejen el sistema sin acceso administrativo.
 

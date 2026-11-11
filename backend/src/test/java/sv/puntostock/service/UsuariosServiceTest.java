@@ -33,6 +33,9 @@ class UsuariosServiceTest {
     when(usuarios.bloquear("admin")).thenReturn(Optional.of(admin));
     when(usuarios.findById(1L)).thenReturn(Optional.of(admin));
     when(usuarios.findById(2L)).thenReturn(Optional.of(vendedor));
+    when(usuarios.bloquearId(1L)).thenReturn(Optional.of(admin));
+    when(usuarios.bloquearId(2L)).thenReturn(Optional.of(vendedor));
+    when(usuarios.bloquear("vendedor")).thenReturn(Optional.of(vendedor));
     when(usuarios.findByUsername("vendedor")).thenReturn(Optional.of(vendedor));
     when(usuarios.findByUsername("admin")).thenReturn(Optional.of(admin));
     when(roles.findByNombre("ADMIN")).thenReturn(Optional.of(rolAdmin));
@@ -99,10 +102,59 @@ class UsuariosServiceTest {
   }
 
   @Test
+  void restablecerVendedorUsaClaveTemporalEInvalidaAccesosPrevios() {
+    vendedor.recuperacionHash = "enlace-anterior";
+    when(passwords.encode("puntostock")).thenReturn("hash-temporal");
+    service.restablecerVendedor(2L, "admin");
+    assertEquals("hash-temporal", vendedor.passwordHash);
+    assertTrue(vendedor.cambioClavePendiente);
+    assertEquals(1, vendedor.authVersion);
+    assertNull(vendedor.recuperacionHash);
+  }
+
+  @Test
+  void noPermiteClaveTemporalParaAdministradoresOInactivos() {
+    assertThrows(ResponseStatusException.class, () -> service.restablecerVendedor(1L, "admin"));
+    vendedor.activo = false;
+    assertThrows(ResponseStatusException.class, () -> service.restablecerVendedor(2L, "admin"));
+    vendedor.activo = true;
+    vendedor.roles.add(rolAdmin);
+    assertThrows(ResponseStatusException.class, () -> service.restablecerVendedor(2L, "admin"));
+    verifyNoInteractions(passwords);
+  }
+
+  @Test
+  void cambioInicialExigeConfirmacionYClavePersonalValida() {
+    vendedor.cambioClavePendiente = true;
+    when(passwords.matches("puntostock", "anterior")).thenReturn(true);
+    assertThrows(
+        ResponseStatusException.class,
+        () -> service.cambiarClaveInicial("vendedor", "puntostock", "puntostock"));
+    assertThrows(
+        ResponseStatusException.class,
+        () -> service.cambiarClaveInicial("vendedor", "Mi-clave-personal", "Otra-clave-123"));
+    assertThrows(
+        ResponseStatusException.class,
+        () -> service.cambiarClaveInicial("vendedor", "á".repeat(40), "á".repeat(40)));
+    assertTrue(vendedor.cambioClavePendiente);
+    assertEquals("anterior", vendedor.passwordHash);
+    when(passwords.encode("Clave123")).thenReturn("hash-personal");
+    service.cambiarClaveInicial("vendedor", "Clave123", "Clave123");
+    assertFalse(vendedor.cambioClavePendiente);
+    assertEquals("hash-personal", vendedor.passwordHash);
+    assertEquals(1, vendedor.authVersion);
+    assertThrows(
+        ResponseStatusException.class,
+        () -> service.cambiarClaveInicial("vendedor", "Otra-clave-123", "Otra-clave-123"));
+  }
+
+  @Test
   void rechazaClavesCortasYMayoresA72Bytes() {
-    assertThrows(ResponseStatusException.class, () -> UsuariosService.validarClave("corta", true));
+    assertThrows(
+        ResponseStatusException.class, () -> UsuariosService.validarClave("Clave12", true));
     assertThrows(
         ResponseStatusException.class, () -> UsuariosService.validarClave("á".repeat(40), false));
+    assertDoesNotThrow(() -> UsuariosService.validarClave("Clave123", true));
     assertDoesNotThrow(() -> UsuariosService.validarClave("", false));
   }
 }

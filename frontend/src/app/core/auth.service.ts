@@ -16,6 +16,7 @@ interface Sesion {
   roles: string[];
   expiresIn: number;
   username: string;
+  cambioClavePendiente?: boolean;
 }
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -27,6 +28,7 @@ export class AuthService {
   username = signal('');
   perfil = signal<Perfil | null>(null);
   perfilError = signal(false);
+  cambioClavePendiente = signal(false);
   constructor() {
     for (const persistente of [false, true]) {
       try {
@@ -39,6 +41,7 @@ export class AuthService {
     this.token.set(s.accessToken);
     this.roles.set(s.roles);
     this.username.set(username);
+    this.cambioClavePendiente.set(s.cambioClavePendiente === true);
   }
   login(username: string, password: string, rememberMe = false) {
     return this.http.post<Sesion>(
@@ -95,10 +98,14 @@ export class AuthService {
   admin() {
     return this.roles().includes('ADMIN');
   }
+  destinoInicio() {
+    return this.cambioClavePendiente() ? '/cambiar-clave' : this.admin() ? '/dashboard' : '/pos';
+  }
   limpiar() {
     this.token.set(null);
     this.roles.set([]);
     this.username.set('');
+    this.cambioClavePendiente.set(false);
     this.perfil.set(null);
   }
   logout() {

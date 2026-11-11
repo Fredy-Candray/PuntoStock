@@ -137,6 +137,18 @@
                   >
                     <ps-icon [name]="u.activo ? 'logout' : 'refresh'" />
                   </button>
+                  @if (u.roles.includes('VENDEDOR') && !u.roles.includes('ADMIN')) {
+                    <button
+                      class="icon-btn"
+                      type="button"
+                      (click)="restablecer.set(u); error.set('')"
+                      [disabled]="busy() || !u.activo"
+                      title="Restablecer contraseña"
+                      [attr.aria-label]="'Restablecer contraseña de ' + u.nombre"
+                    >
+                      <ps-icon name="key" />
+                    </button>
+                  }
                 </div>
               </td>
             </tr>
@@ -155,6 +167,64 @@
     </div>
   }
 </section>
+@if (restablecer(); as u) {
+  <div class="admin-overlay" (click)="cerrar()">
+    <section
+      class="panel admin-dialog"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="restablecer-titulo"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="panel-heading">
+        <h2 id="restablecer-titulo">Restablecer contraseña</h2>
+        <button
+          class="icon-btn"
+          type="button"
+          (click)="cerrar()"
+          [disabled]="busy()"
+          aria-label="Cerrar confirmación"
+        >
+          <ps-icon name="close" />
+        </button>
+      </div>
+      <div class="panel-body">
+        <p>
+          Se restablecerá el acceso de <strong>{{ u.nombre }}</strong> ({{ u.username }}).
+        </p>
+        <p>
+          Su contraseña temporal será <strong>puntostock</strong>, en minúsculas. Tendrá que crear
+          una contraseña personal al iniciar sesión para poder usar el sistema.
+        </p>
+        <p>Se cerrarán las sesiones anteriores de esta cuenta.</p>
+        @if (error()) {
+          <p class="notice notice-error" role="alert">{{ error() }}</p>
+        }
+        <div class="admin-form-actions">
+          <button
+            class="btn btn-secondary"
+            type="button"
+            cdkFocusInitial
+            (click)="cerrar()"
+            [disabled]="busy()"
+          >
+            Cancelar
+          </button>
+          <button
+            class="btn btn-primary"
+            type="button"
+            (click)="restablecerClave()"
+            [disabled]="busy()"
+          >
+            {{ busy() ? 'Restableciendo…' : 'Restablecer contraseña' }}
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+}
 @if (editor()) {
   <div class="admin-overlay">
     <section
@@ -220,12 +290,12 @@
                   [type]="visible ? 'text' : 'password'"
                   [(ngModel)]="modelo.password"
                   [required]="id === null"
-                  minlength="12"
+                  minlength="8"
                   maxlength="72"
                   autocomplete="new-password"
                   aria-describedby="usuario-password-ayuda"
                   [placeholder]="
-                    id === null ? 'Mínimo 12 caracteres' : 'Vacía para conservar la actual'
+                    id === null ? 'Mínimo 8 caracteres' : 'Vacía para conservar la actual'
                   "
                 /><button
                   type="button"
@@ -237,7 +307,7 @@
                 </button>
               </div>
               <span id="usuario-password-ayuda" class="field-help">
-                Mínimo 12 caracteres. Al editar, deja el campo vacío para conservar la contraseña
+                Mínimo 8 caracteres. Al editar, deja el campo vacío para conservar la contraseña
                 actual.
               </span></label
             ><label

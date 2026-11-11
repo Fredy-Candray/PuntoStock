@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Entity
+@org.hibernate.annotations.DynamicUpdate
 @Table(name = "usuarios")
 public class Usuario {
   @Id
@@ -22,6 +23,9 @@ public class Usuario {
 
   @Column(name = "auth_version", nullable = false)
   public long authVersion = 0;
+
+  @Column(name = "cambio_clave_pendiente", nullable = false)
+  public boolean cambioClavePendiente = false;
 
   @Column(name = "recuperacion_hash", length = 64)
   public String recuperacionHash;

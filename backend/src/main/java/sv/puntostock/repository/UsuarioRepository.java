@@ -17,10 +17,12 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     boolean getActivo();
 
     long getAuthVersion();
+
+    boolean getCambioClavePendiente();
   }
 
   @Query(
-      "select u.id as id,u.username as username,u.passwordHash as passwordHash,u.activo as activo,u.authVersion as authVersion from Usuario u where u.username=:username")
+      "select u.id as id,u.username as username,u.passwordHash as passwordHash,u.activo as activo,u.authVersion as authVersion,u.cambioClavePendiente as cambioClavePendiente from Usuario u where u.username=:username")
   Optional<Acceso> acceso(@Param("username") String username);
 
   @Query("select r.nombre from Usuario u join u.roles r where u.id=:id")
@@ -57,6 +59,10 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
       org.springframework.data.domain.Pageable pagina);
 
   Optional<Usuario> findByUsername(String username);
+
+  @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+  @Query("select u from Usuario u where u.id=:id")
+  Optional<Usuario> bloquearId(@Param("id") Long id);
 
   @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
   @Query("select u from Usuario u where u.username=:username")

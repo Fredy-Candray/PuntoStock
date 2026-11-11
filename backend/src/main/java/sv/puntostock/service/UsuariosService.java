@@ -99,10 +99,56 @@ public class UsuariosService {
         .orElseThrow(() -> new ResponseStatusException(UNAUTHORIZED));
   }
 
+  private Usuario bloquearUsuario(Long id) {
+    return usuarios
+        .bloquearId(id)
+        .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "No se encontró el usuario."));
+  }
+
+  @Transactional
+  public void restablecerVendedor(Long id, String actor) {
+    bloquear(actor);
+    var u = bloquearUsuario(id);
+    if (!u.activo
+        || u.roles.stream().noneMatch(r -> r.nombre.equals("VENDEDOR"))
+        || u.roles.stream().anyMatch(r -> r.nombre.equals("ADMIN")))
+      throw new ResponseStatusException(
+          CONFLICT, "Solo puedes restablecer la contraseña temporal de vendedores activos.");
+    u.passwordHash = passwords.encode("puntostock");
+    u.cambioClavePendiente = true;
+    u.authVersion++;
+    u.recuperacionHash = null;
+    u.recuperacionExpira = null;
+    u.recuperacionSolicitada = null;
+  }
+
+  @Transactional
+  public void cambiarClaveInicial(String username, String password, String confirmacion) {
+    var u =
+        usuarios
+            .bloquear(username)
+            .filter(x -> x.activo)
+            .orElseThrow(() -> new ResponseStatusException(UNAUTHORIZED));
+    if (!u.cambioClavePendiente)
+      throw new ResponseStatusException(CONFLICT, "No hay un cambio de contraseña pendiente.");
+    validarClave(password, true);
+    if (!password.equals(confirmacion))
+      throw new ResponseStatusException(BAD_REQUEST, "Las contraseñas no coinciden.");
+    if (passwords.matches(password, u.passwordHash))
+      throw new ResponseStatusException(
+          BAD_REQUEST, "Elige una contraseña diferente de la temporal.");
+    u.passwordHash = passwords.encode(password);
+    u.cambioClavePendiente = false;
+    u.authVersion++;
+    u.recuperacionHash = null;
+    u.recuperacionExpira = null;
+    u.recuperacionSolicitada = null;
+  }
+
   @Transactional
   public Vista guardar(Long id, UsuarioInput in, String actor) {
     bloquear(actor);
-    var u = id == null ? new Usuario() : obtener(id);
+    var u = id == null ? new Usuario() : bloquearUsuario(id);
     String username = in.username().trim();
     if (username.isBlank())
       throw new ResponseStatusException(BAD_REQUEST, "El usuario es obligatorio.");
@@ -128,6 +174,7 @@ public class UsuariosService {
                 || !u.roles.stream().map(r -> r.nombre).toList().equals(List.of(in.rol())));
     if (in.password() != null && !in.password().isEmpty()) {
       u.passwordHash = passwords.encode(in.password());
+      u.cambioClavePendiente = false;
       cambioAcceso = id != null;
       u.recuperacionHash = null;
       u.recuperacionExpira = null;
@@ -149,7 +196,7 @@ public class UsuariosService {
   @Transactional
   public void estado(Long id, boolean activo, String actor) {
     bloquear(actor);
-    var u = obtener(id);
+    var u = bloquearUsuario(id);
     if (!activo && u.username.equals(actor))
       throw new ResponseStatusException(CONFLICT, "No puedes desactivar tu propia cuenta.");
     if (u.activo != activo) {
@@ -164,9 +211,9 @@ public class UsuariosService {
     if (!crear && (password == null || password.isEmpty())) return;
     if (password == null
         || password.isBlank()
-        || password.length() < 12
+        || password.length() < 8
         || password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72)
       throw new ResponseStatusException(
-          BAD_REQUEST, "La contraseña requiere al menos 12 caracteres y como máximo 72 bytes.");
+          BAD_REQUEST, "La contraseña requiere al menos 8 caracteres y como máximo 72 bytes.");
   }
 }

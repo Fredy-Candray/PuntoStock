@@ -20,3 +20,9 @@ output/
 
 # Archivo de trabajo local con el catálogo y registros del negocio.
 /CONTROL DE VENTAS.xlsx
+
+# APK local de prueba para transferir al teléfono en la red privada.
+/frontend/public/apk-local/
+
+# Capturas y adjuntos privados del chat local.
+/.codex-attachments/

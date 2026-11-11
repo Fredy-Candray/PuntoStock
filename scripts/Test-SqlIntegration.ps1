@@ -1,6 +1,7 @@
-param([string]$Instance='localhost\SQLEXPRESS',[string]$BuildDirectory='')
+param([string]$Instance='localhost\SQLEXPRESS',[string]$BuildDirectory='',[switch]$Offline)
 $ErrorActionPreference='Stop'
 $taskRoot=Split-Path $PSScriptRoot -Parent
+$taskOfflineArgs=@();if($Offline){$taskOfflineArgs=@('-o')}
 $taskBuildArgs=@()
 if($BuildDirectory){
  if($BuildDirectory -notmatch '^\.cache/[a-zA-Z0-9_-]+$'){throw 'La salida de verificación debe estar en una subcarpeta de .cache.'}
@@ -32,7 +33,7 @@ try {
  $env:SQL_TEST_PASSWORD=[Net.NetworkCredential]::new('', $taskSettings.DbPassword).Password
  $env:JAVA_HOME=Join-Path $env:USERPROFILE '.jdks/ms-21.0.11'
  Push-Location (Join-Path $taskRoot 'backend')
- try {& mvn.cmd -B '-Dmaven.repo.local=../.cache/m2' @taskBuildArgs verify; if($LASTEXITCODE -ne 0){throw 'Fallaron las pruebas SQL.'}}finally{Pop-Location}
+ try {& mvn.cmd -B @taskOfflineArgs '-Dmaven.repo.local=../.cache/m2' @taskBuildArgs verify; if($LASTEXITCODE -ne 0){throw 'Fallaron las pruebas SQL.'}}finally{Pop-Location}
  Write-Output 'Integración SQL completada en una base aislada. La base del negocio no se modificó.'
 }finally {
  Remove-Item Env:SQL_TEST_PASSWORD -ErrorAction SilentlyContinue

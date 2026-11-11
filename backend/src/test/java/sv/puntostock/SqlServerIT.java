@@ -255,6 +255,8 @@ class SqlServerIT {
     esperadas.add("POST\t/api/productos/categorias\thasRole('ADMIN')");
     esperadas.add("PUT\t/api/productos/categorias/{id}\thasRole('ADMIN')");
     esperadas.add("GET\t/api/productos/{id}/imagen\tsecurity-global");
+    esperadas.add("POST\t/api/usuarios/{id}/restablecer-clave\thasRole('ADMIN')");
+    esperadas.add("POST\t/api/auth/cambiar-clave-inicial\tsecurity-global");
     assertEquals(esperadas, actuales);
   }
 
@@ -538,6 +540,10 @@ class SqlServerIT {
   }
 
   Login login(String usuario) throws Exception {
+    return login(usuario, clave);
+  }
+
+  Login login(String usuario, String clave) throws Exception {
     var cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
     var client = HttpClient.newBuilder().cookieHandler(cookies).build();
     var response =
@@ -679,7 +685,7 @@ class SqlServerIT {
     assertTrue(menu.contains("Mi tienda"));
     assertTrue(menu.contains("/caja"));
     assertEquals(
-        11,
+        12,
         db.queryForObject(
             "SELECT MAX(TRY_CONVERT(int,version)) FROM flyway_schema_history WHERE success=1",
             Integer.class));
@@ -687,6 +693,93 @@ class SqlServerIT {
         1,
         db.queryForObject(
             "SELECT COUNT(*) FROM categorias_productos WHERE nombre=N'General'", Integer.class));
+  }
+
+  @Test
+  void restablecimientoLocalObligaCambioYRevocaSesiones() throws Exception {
+    String nombre = "qa.reset." + UUID.randomUUID();
+    long id = usuario(nombre, "VENDEDOR");
+    var administrador = login("qa.admin");
+    var anterior = login(nombre);
+    String ruta = "/api/usuarios/" + id + "/restablecer-clave";
+    assertEquals(403, enviar(anterior, "POST", ruta, "{}").statusCode());
+    assertEquals(
+        409,
+        enviar(administrador, "POST", "/api/usuarios/" + admin + "/restablecer-clave", "{}")
+            .statusCode());
+    assertEquals(200, enviar(administrador, "POST", ruta, "{}").statusCode());
+    assertEquals(401, get(anterior, "/api/productos").statusCode());
+    assertTrue(
+        sql.queryForObject(
+            "select cambio_clave_pendiente from usuarios where id=?", Boolean.class, id));
+    assertTrue(
+        passwords.matches(
+            "puntostock",
+            sql.queryForObject("select password_hash from usuarios where id=?", String.class, id)));
+    var temporal = login(nombre, "puntostock");
+    for (String path :
+        List.of(
+            "/api/productos",
+            "/api/auth/me",
+            "/api/auth/me/menu",
+            "/api/usuarios",
+            "/api/caja/estado",
+            "/api/ventas")) assertEquals(403, get(temporal, path).statusCode(), path);
+    var renovada =
+        temporal.client.send(
+            HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/auth/renovar"))
+                .header("X-PuntoStock", "1")
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, renovada.statusCode(), renovada.body());
+    var mapper = new tools.jackson.databind.ObjectMapper();
+    assertTrue(mapper.readTree(renovada.body()).get("cambioClavePendiente").asBoolean());
+    assertEquals(
+        400,
+        enviar(
+                temporal,
+                "POST",
+                "/api/auth/cambiar-clave-inicial",
+                "{\"password\":\"vendedor\",\"confirmacion\":\"vendedor\"}")
+            .statusCode());
+    assertEquals(
+        400,
+        enviar(
+                temporal,
+                "POST",
+                "/api/auth/cambiar-clave-inicial",
+                "{\"password\":\"Personal-clave-2026\",\"confirmacion\":\"No-coincide-2026\"}")
+            .statusCode());
+    assertEquals(
+        200,
+        enviar(
+                temporal,
+                "POST",
+                "/api/auth/cambiar-clave-inicial",
+                "{\"password\":\"Personal-clave-2026\",\"confirmacion\":\"Personal-clave-2026\"}")
+            .statusCode());
+    assertFalse(
+        sql.queryForObject(
+            "select cambio_clave_pendiente from usuarios where id=?", Boolean.class, id));
+    assertEquals(401, get(temporal, "/api/productos").statusCode());
+    var personal = login(nombre, "Personal-clave-2026");
+    assertEquals(200, get(personal, "/api/productos").statusCode());
+    assertEquals(
+        403, enviar(personal, "POST", "/api/auth/cambiar-clave-inicial", "{}").statusCode());
+    var rechazada =
+        HttpClient.newHttpClient()
+            .send(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/api/auth/login"))
+                    .header("Content-Type", "application/json")
+                    .header("X-PuntoStock", "1")
+                    .POST(
+                        HttpRequest.BodyPublishers.ofString(
+                            mapper.writeValueAsString(
+                                Map.of("username", nombre, "password", "puntostock"))))
+                    .build(),
+                HttpResponse.BodyHandlers.ofString());
+    assertEquals(401, rechazada.statusCode());
   }
 
   @Test

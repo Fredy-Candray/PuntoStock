@@ -29,7 +29,7 @@ import { UserMenuComponent } from './core/user-menu.component';
     UserMenuComponent,
   ],
   template: `
-    @if (auth.token() && !url().startsWith('/login')) {
+    @if (auth.token() && !auth.cambioClavePendiente() && !url().startsWith('/login')) {
       <div class="app-layout">
         <aside class="sidebar">
           <a
@@ -110,7 +110,7 @@ export class App {
   );
   constructor() {
     effect((onCleanup) => {
-      if (this.auth.token()) {
+      if (this.auth.token() && !this.auth.cambioClavePendiente()) {
         const sub = this.auth.cargarPerfil().subscribe({ error: () => {} });
         const nav = this.menu.cargar().subscribe({ error: () => {} });
         onCleanup(() => {

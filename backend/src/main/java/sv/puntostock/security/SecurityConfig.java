@@ -91,8 +91,19 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/actuator/**")
                     .hasRole("ADMIN")
+                    .requestMatchers("/api/auth/cambiar-clave-inicial")
+                    .hasRole("CAMBIAR_CLAVE")
                     .anyRequest()
-                    .authenticated())
+                    .access(
+                        (authentication, context) ->
+                            new org.springframework.security.authorization.AuthorizationDecision(
+                                authentication.get() instanceof JwtAuthenticationToken
+                                    && authentication.get().getAuthorities().stream()
+                                        .noneMatch(
+                                            authority ->
+                                                authority
+                                                    .getAuthority()
+                                                    .equals("ROLE_CAMBIAR_CLAVE")))))
         .oauth2ResourceServer(
             o ->
                 o.authenticationEntryPoint((req, res, ex) -> error(res, 401))
@@ -120,9 +131,12 @@ public class SecurityConfig {
                                     throw new org.springframework.security.oauth2.core
                                         .OAuth2AuthenticationException("invalid_token");
                                   var authorities =
-                                      usuarios.rolesAcceso(u.getId()).stream()
-                                          .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
-                                          .toList();
+                                      (u.getCambioClavePendiente()
+                                              ? List.of("CAMBIAR_CLAVE")
+                                              : usuarios.rolesAcceso(u.getId()))
+                                          .stream()
+                                              .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
+                                              .toList();
                                   return new JwtAuthenticationToken(
                                       jwt, authorities, u.getUsername());
                                 })))

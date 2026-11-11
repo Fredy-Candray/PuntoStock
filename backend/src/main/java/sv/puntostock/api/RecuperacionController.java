@@ -21,7 +21,7 @@ public class RecuperacionController {
   public record Restablecer(
       @NotBlank @Size(max = 80) String username,
       @NotBlank @Pattern(regexp = "[A-Za-z0-9_-]{43}") String token,
-      @NotBlank @Size(min = 12, max = 72) String password) {}
+      @NotBlank @Size(min = 8, max = 72) String password) {}
 
   @PostMapping("/recuperacion")
   public Map<String, String> solicitar(@Valid @RequestBody Solicitud in) {

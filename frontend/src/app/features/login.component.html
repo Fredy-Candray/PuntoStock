@@ -65,7 +65,7 @@
           recuperacion() === 'solicitar'
             ? 'Ingresa tu usuario y el correo registrado en tu perfil.'
             : recuperacion() === 'restablecer'
-              ? 'Elige una contraseña de al menos 12 caracteres.'
+              ? 'Elige una contraseña de al menos 8 caracteres.'
               : 'Ingresa tus credenciales para continuar.'
         }}
       </p>
@@ -111,7 +111,7 @@
                 type="password"
                 [(ngModel)]="nuevaClave"
                 required
-                minlength="12"
+                minlength="8"
                 maxlength="72"
                 autocomplete="new-password"
                 [disabled]="busy()"
@@ -125,7 +125,7 @@
                 type="password"
                 [(ngModel)]="confirmacion"
                 required
-                minlength="12"
+                minlength="8"
                 maxlength="72"
                 autocomplete="new-password"
                 [disabled]="busy()"

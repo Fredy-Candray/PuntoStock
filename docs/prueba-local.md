@@ -43,7 +43,7 @@ El campo SQL `usuarios.password_hash` contiene un hash BCrypt, no la contraseña
 ./scripts/Set-LocalAdminPassword.ps1
 ```
 
-Solicita la nueva contraseña y su confirmación de forma oculta, genera BCrypt, actualiza únicamente el administrador configurado y sincroniza la copia DPAPI. Requiere 12 caracteres por defecto; para una prueba local con al menos ocho puede indicarse `-AllowShortLocalPassword`. La API normal de creación de usuarios conserva su mínimo de 12 caracteres.
+Solicita la nueva contraseña y su confirmación de forma oculta, genera BCrypt, actualiza únicamente el administrador configurado y sincroniza la copia DPAPI. Requiere 12 caracteres por defecto; para una prueba local con al menos ocho puede indicarse `-AllowShortLocalPassword`. La API normal de creación de usuarios requiere un mínimo de 8 caracteres.
 
 Si una base antigua contiene un hash inválido, `./scripts/Repair-LocalAdmin.ps1` lo repara usando la clave cifrada ya guardada, antes de aplicar la migración. No sobrescribe contraseñas BCrypt válidas. Consultar o copiar la clave después con los scripts locales de credenciales.
 

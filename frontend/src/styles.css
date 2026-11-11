@@ -3307,6 +3307,7 @@ ps-user-menu {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 .admin-form-actions {
   justify-content: flex-end;

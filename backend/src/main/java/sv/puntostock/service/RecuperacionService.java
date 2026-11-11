@@ -94,6 +94,7 @@ public class RecuperacionService {
             u.recuperacionHash.getBytes(StandardCharsets.UTF_8),
             hash(token).getBytes(StandardCharsets.UTF_8))) throw invalido();
     u.passwordHash = passwords.encode(password);
+    u.cambioClavePendiente = false;
     u.authVersion++;
     u.recuperacionHash = null;
     u.recuperacionExpira = null;

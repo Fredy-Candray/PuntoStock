@@ -33,6 +33,7 @@ export class UsuariosComponent {
   editor = signal(false);
   detalle = signal<{ usuario: Usuario; fotoPerfil: string | null } | null>(null);
   confirmar = signal<Usuario | null>(null);
+  restablecer = signal<Usuario | null>(null);
   id: number | null = null;
   buscar = '';
   rol = '';
@@ -136,6 +137,7 @@ export class UsuariosComponent {
     this.editor.set(false);
     this.detalle.set(null);
     this.confirmar.set(null);
+    this.restablecer.set(null);
     this.modelo.password = '';
   }
   ver(u: Usuario) {
@@ -158,10 +160,10 @@ export class UsuariosComponent {
     if (this.busy()) return;
     if (
       this.modelo.password &&
-      (this.modelo.password.length < 12 ||
+      (this.modelo.password.length < 8 ||
         new TextEncoder().encode(this.modelo.password).length > 72)
     ) {
-      this.error.set('La contraseña requiere al menos 12 caracteres y como máximo 72 bytes.');
+      this.error.set('La contraseña requiere al menos 8 caracteres y como máximo 72 bytes.');
       return;
     }
     const propiaClave = this.propio() && !!this.modelo.password;
@@ -219,6 +221,28 @@ export class UsuariosComponent {
           this.fallo(e);
         },
       });
+  }
+  restablecerClave() {
+    const u = this.restablecer();
+    if (!u || this.busy()) return;
+    this.busy.set(true);
+    this.error.set('');
+    this.http.post('/api/usuarios/' + u.id + '/restablecer-clave', {}).subscribe({
+      next: () => {
+        this.busy.set(false);
+        this.restablecer.set(null);
+        this.mensaje.set(
+          'Contraseña restablecida para ' +
+            u.nombre +
+            '. Debe ingresar con puntostock y crear su contraseña personal. Sus sesiones anteriores se cerraron.',
+        );
+        this.cargar();
+      },
+      error: (e) => {
+        this.busy.set(false);
+        this.fallo(e);
+      },
+    });
   }
   fallo(e: HttpErrorResponse) {
     this.error.set(e.error?.message || 'No se pudo completar la operación. Inténtalo de nuevo.');

@@ -1,4 +1,4 @@
-param([int]$Port=18080)
+param([int]$Port=18080,[switch]$Offline)
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
 try {
@@ -17,7 +17,7 @@ if($existing){
 $settings=Import-Clixml (Join-Path $root '.cache/local/secrets.clixml')
 function Plain($value){[Net.NetworkCredential]::new('', $value).Password}
 $mailSettingsPath=Join-Path $root '.cache/local/mail.clixml'
-if((Test-Path $mailSettingsPath) -and !$env:MAIL_USERNAME){
+if(!$Offline -and (Test-Path $mailSettingsPath) -and !$env:MAIL_USERNAME){
  $mailSettings=Import-Clixml $mailSettingsPath
  $env:MAIL_USERNAME=$mailSettings.Username
  $env:MAIL_PASSWORD=Plain $mailSettings.Password
@@ -34,6 +34,12 @@ $env:SESSION_SECURE='false'
 $env:SPRING_PROFILES_ACTIVE='local'
 $env:SERVER_ADDRESS='127.0.0.1'
 $env:SERVER_PORT="$Port"
+$taskOfflineArgs=@()
+if($Offline){
+ $taskOfflineArgs=@('-o')
+ $env:RECOVERY_ENABLED='false'
+ Write-Output 'Modo local sin descargas Maven ni envío de correos.'
+}
 $jdk=Get-ChildItem (Join-Path $env:USERPROFILE '.jdks') -Directory -ErrorAction SilentlyContinue | Where-Object Name -Match '(^|-)21\.' | Select-Object -First 1
 if(!$jdk){throw 'No se encontró JDK 21 en .jdks. Instálalo antes de iniciar el backend.'}
 $env:JAVA_HOME=$jdk.FullName
@@ -53,7 +59,7 @@ Push-Location (Join-Path $root 'backend')
 try {
  # En este Windows el socket AF_UNIX interno del JDK falla al conectar.
  # Una ruta sin directorio provoca el fallback TCP previsto por PipeImpl.
- & mvn -B '-Dmaven.repo.local=../.cache/m2' "-Dpuntostock.build-dir=../.cache/$buildName" '-Dspring-boot.run.jvmArguments=-Djdk.net.unixdomain.tmpdir=../.cache/local/no-unix-sockets' spring-boot:run
+ & mvn -B @taskOfflineArgs '-Dmaven.repo.local=../.cache/m2' "-Dpuntostock.build-dir=../.cache/$buildName" '-Dspring-boot.run.jvmArguments=-Djdk.net.unixdomain.tmpdir=../.cache/local/no-unix-sockets' spring-boot:run
  if($LASTEXITCODE -ne 0){throw 'Falló el arranque de Spring Boot.'}
 }
 finally {Pop-Location; 'DB_PASSWORD','JWT_SECRET','BOOTSTRAP_PASSWORD','MAIL_PASSWORD' | ForEach-Object {Remove-Item "Env:$_" -ErrorAction SilentlyContinue}}

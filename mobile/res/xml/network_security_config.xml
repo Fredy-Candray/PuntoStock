@@ -1,0 +1,8 @@
+<network-security-config>
+  <!-- WebView limita cada solicitud al único origen privado elegido por el usuario. -->
+  <base-config cleartextTrafficPermitted="true" />
+  <domain-config cleartextTrafficPermitted="true">
+    <domain>127.0.0.1</domain>
+    <domain>localhost</domain>
+  </domain-config>
+</network-security-config>

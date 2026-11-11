@@ -17,6 +17,7 @@ import { Component, Input } from '@angular/core';
 export class IconComponent {
   @Input() name = 'box';
   readonly paths: Record<string, string> = {
+    key: 'M15 4a5 5 0 1 1-3.5 8.5L4 20H2v-3l7.5-7.5A5 5 0 0 1 15 4ZM16 8h.01M5 16l2 2',
     users:
       'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
     settings: 'M4 6h16M4 12h16M4 18h16M8 3v6M16 9v6M10 15v6',

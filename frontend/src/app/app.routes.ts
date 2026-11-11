@@ -2,6 +2,12 @@ import { Routes } from '@angular/router';
 import { authGuard, adminGuard, menuGuard } from './core/security';
 export const routes: Routes = [
   {
+    path: 'cambiar-clave',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/cambiar-clave.component').then((m) => m.CambiarClaveComponent),
+  },
+  {
     path: 'inicio',
     canActivate: [authGuard],
     loadComponent: () => import('./features/inicio.component').then((m) => m.InicioComponent),

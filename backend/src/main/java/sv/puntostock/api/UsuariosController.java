@@ -58,4 +58,9 @@ public class UsuariosController {
   public void desactivar(@PathVariable Long id, Principal actor) {
     service.estado(id, false, actor.getName());
   }
+
+  @PostMapping("/{id}/restablecer-clave")
+  public void restablecerClave(@PathVariable Long id, Principal actor) {
+    service.restablecerVendedor(id, actor.getName());
+  }
 }

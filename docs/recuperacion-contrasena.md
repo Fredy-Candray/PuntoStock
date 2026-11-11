@@ -35,6 +35,6 @@ Sin remitente o sin configuración habilitada, el formulario informa que la recu
 
 ## Verificación pendiente con la cuenta real
 
-Solicitar un enlace para una cuenta propia con correo registrado, revisar también Spam, definir una contraseña de al menos 12 caracteres (máximo 72 bytes UTF-8), entrar con ella y comprobar que el mismo enlace no funciona otra vez. Las pruebas automatizadas usan un emisor simulado y no envían correos reales.
+Solicitar un enlace para una cuenta propia con correo registrado, revisar también Spam, definir una contraseña de al menos 8 caracteres (máximo 72 bytes UTF-8), entrar con ella y comprobar que el mismo enlace no funciona otra vez. Las pruebas automatizadas usan un emisor simulado y no envían correos reales.
 
 El limitador por cuenta no reemplaza un límite global por IP en el proxy antes de exponer el sistema a Internet.
