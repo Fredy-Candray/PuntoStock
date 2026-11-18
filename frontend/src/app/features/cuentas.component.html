@@ -1,0 +1,348 @@
+<section class="cuentas">
+  <header>
+    <h1>Cuentas</h1>
+    <p>Consulta tus saldos y registra cómo usas el dinero.</p>
+  </header>
+  @if (error()) {
+    <p class="notice notice-error" role="alert">{{ error() }}</p>
+  }
+  @if (aviso()) {
+    <p role="status">{{ aviso() }}</p>
+  }
+  @if (pendiente()) {
+    <button type="button" class="btn btn-secondary" (click)="reintentar()" [disabled]="guardando()">
+      Reintentar registro
+    </button>
+  }
+  <form class="filtro" #fechas="ngForm" (ngSubmit)="filtrar()">
+    <label>Desde <input type="date" name="desde" [(ngModel)]="desde" required /></label>
+    <label>Hasta <input type="date" name="hasta" [(ngModel)]="hasta" required /></label>
+    <button class="btn btn-secondary" [disabled]="fechas.invalid || cargando() || guardando()">
+      Consultar
+    </button>
+  </form>
+  @if (vista(); as v) {
+    <div class="tarjetas">
+      <article class="panel">
+        <h2>Dinero personal</h2>
+        <strong>{{ saldo('PERSONAL') | currency: 'USD' }}</strong>
+      </article>
+      <article class="panel">
+        <h2>Cuentas del negocio</h2>
+        <strong>{{ saldo('NEGOCIO') | currency: 'USD' }}</strong>
+      </article>
+      <article class="panel">
+        <h2>Por cobrar en pedidos</h2>
+        <strong>{{ v.resultado.totalPorCobrar | currency: 'USD' }}</strong>
+      </article>
+      <article class="panel">
+        <h2>Por pagar a proveedores</h2>
+        <strong>{{ v.resultado.totalPorPagar | currency: 'USD' }}</strong>
+      </article>
+    </div>
+    <div class="columnas">
+      <article class="panel">
+        <h2>Saldos actuales</h2>
+        <p>
+          Registra aquí el efectivo personal y las cuentas del negocio que quieras controlar fuera
+          de Caja.
+        </p>
+        <ul class="registros">
+          @for (c of v.cuentas; track c.id) {
+            <li>
+              <span
+                >{{ c.nombre }}
+                <small>{{ c.ambito === 'PERSONAL' ? 'Personal' : 'Negocio' }}</small></span
+              ><strong>{{ c.saldo | currency: 'USD' }}</strong>
+            </li>
+          } @empty {
+            <li>Todavía no hay cuentas registradas.</li>
+          }
+        </ul>
+        <form #cuenta="ngForm" (ngSubmit)="alta()">
+          <fieldset [disabled]="guardando() || cargando() || !!pendiente()">
+            <label
+              >Nombre
+              <input
+                name="nombre"
+                [(ngModel)]="nombre"
+                required
+                maxlength="100"
+                placeholder="Efectivo personal"
+            /></label>
+            <label
+              >Tipo de cuenta
+              <select name="ambito" [(ngModel)]="ambito">
+                <option value="NEGOCIO">Negocio</option>
+                <option value="PERSONAL">Personal</option>
+              </select></label
+            >
+            <label
+              >Saldo inicial (USD)
+              <input
+                type="number"
+                name="inicial"
+                [(ngModel)]="inicial"
+                required
+                min="0"
+                max="999999999.99"
+                step="0.01"
+            /></label>
+            <button class="btn btn-primary" [disabled]="cuenta.invalid || !nombre.trim()">
+              Crear cuenta
+            </button>
+          </fieldset>
+        </form>
+      </article>
+      <article class="panel">
+        <h2>Registrar movimiento</h2>
+        <form #mov="ngForm" (ngSubmit)="mover()">
+          <fieldset [disabled]="guardando() || cargando() || !!pendiente()">
+            <label
+              >Tipo
+              <select name="tipo" [(ngModel)]="tipo" (ngModelChange)="cambiarTipo()">
+                @for (t of tipos; track t) {
+                  <option [value]="t">{{ etiquetas[t] }}</option>
+                }
+              </select></label
+            >
+            @if (tipo === 'COMPRA') {
+              <label
+                >Producto
+                <select name="producto" [(ngModel)]="productoId" required>
+                  <option [ngValue]="null">Selecciona el producto</option>
+                  @for (p of productos(); track p.id) {
+                    <option [ngValue]="p.id">{{ p.nombre }} · {{ p.unidad }}</option>
+                  }
+                </select></label
+              >
+              @if (errorCatalogo()) {
+                <p>{{ errorCatalogo() }}</p>
+                <button type="button" class="btn btn-secondary" (click)="cargarProductos()">
+                  Recargar productos
+                </button>
+              }
+              <label
+                >Unidades recibidas
+                <input
+                  type="number"
+                  name="cantidad"
+                  [(ngModel)]="cantidad"
+                  min="1"
+                  max="2147483647"
+                  step="1"
+                  required
+              /></label>
+              <label
+                >Pagado en esta compra (USD)
+                <input
+                  type="number"
+                  name="pagado"
+                  [(ngModel)]="pagadoInicial"
+                  min="0"
+                  [max]="monto ?? 0"
+                  step="0.01"
+                  required
+              /></label>
+              <small
+                >Registra 0 si queda todo pendiente de pago. La compra agrega las unidades al
+                inventario.</small
+              >
+            }
+            @if (tipo === 'PAGO_COMPRA') {
+              <label
+                >Compra pendiente
+                <select name="compra" [(ngModel)]="compraId" required>
+                  <option [ngValue]="null">Selecciona la compra</option>
+                  @for (d of v.porPagar; track d.id) {
+                    <option [ngValue]="d.id">
+                      #{{ d.id }} · {{ d.proveedor }} · {{ d.pendiente | currency: 'USD' }}
+                    </option>
+                  }
+                </select></label
+              >
+            }
+            @if (requiereOrigen()) {
+              <label
+                >Origen
+                <select
+                  name="origen"
+                  [(ngModel)]="origen"
+                  (ngModelChange)="destino = null"
+                  required
+                >
+                  <option [ngValue]="null">Selecciona el origen</option>
+                  @for (c of origenes(); track c.id) {
+                    <option [ngValue]="c.id">
+                      {{ c.nombre }} · {{ c.saldo | currency: 'USD' }}
+                    </option>
+                  }
+                  @if (v.caja.id && ['TRASPASO', 'GASTO', 'COMPRA', 'PAGO_COMPRA'].includes(tipo)) {
+                    <option [ngValue]="'CAJA'">Caja abierta</option>
+                  }
+                </select></label
+              >
+            }
+            @if (requiereDestino()) {
+              <label
+                >Destino
+                <select name="destino" [(ngModel)]="destino" required>
+                  <option [ngValue]="null">Selecciona el destino</option>
+                  @for (c of destinos(); track c.id) {
+                    <option [ngValue]="c.id">{{ c.nombre }}</option>
+                  }
+                  @if (tipo === 'TRASPASO' && v.caja.id && origenEsNegocio()) {
+                    <option [ngValue]="'CAJA'">Caja abierta</option>
+                  }
+                </select></label
+              >
+            }
+            <label
+              >{{ tipo === 'COMPRA' ? 'Proveedor o referencia' : 'Concepto' }}
+              <input name="concepto" [(ngModel)]="concepto" required maxlength="250"
+            /></label>
+            <label
+              >{{ tipo === 'COMPRA' ? 'Total de la compra' : 'Importe' }} (USD)
+              <input
+                type="number"
+                name="monto"
+                [(ngModel)]="monto"
+                required
+                min="0.01"
+                max="999999999.99"
+                step="0.01"
+            /></label>
+            <button class="btn btn-primary" [disabled]="mov.invalid || !concepto.trim()">
+              Guardar movimiento
+            </button>
+          </fieldset>
+        </form>
+      </article>
+    </div>
+    <div class="columnas">
+      <article class="panel">
+        <h2>Resultado del período</h2>
+        <dl class="totales">
+          <dt>Ventas de mostrador</dt>
+          <dd>{{ v.resultado.ventas | currency: 'USD' }}</dd>
+          <dt>Margen bruto de mostrador</dt>
+          <dd>{{ v.resultado.gananciaBruta | currency: 'USD' }}</dd>
+          <dt>Pedidos entregados</dt>
+          <dd>{{ v.resultado.pedidosEntregados | currency: 'USD' }}</dd>
+          <dt>Costo registrado de pedidos</dt>
+          <dd>{{ v.resultado.costoPedidos | currency: 'USD' }}</dd>
+          <dt>Otros ingresos del negocio</dt>
+          <dd>{{ v.resultado.otrosIngresos | currency: 'USD' }}</dd>
+          <dt>Gastos del negocio</dt>
+          <dd>{{ v.resultado.gastos | currency: 'USD' }}</dd>
+          <dt>Resultado estimado</dt>
+          <dd>
+            <strong>{{ v.resultado.resultadoEstimado | currency: 'USD' }}</strong>
+          </dd>
+          <dt>Mercadería comprada</dt>
+          <dd>{{ v.resultado.compras | currency: 'USD' }}</dd>
+          <dt>Valor estimado del inventario actual</dt>
+          <dd>{{ v.resultado.inventario | currency: 'USD' }}</dd>
+        </dl>
+        @if (v.resultado.pedidosSinCosto) {
+          <p>Pedidos del período sin costo completo: {{ v.resultado.pedidosSinCosto }}.</p>
+        }
+        @if (v.resultado.entregadosSinFecha) {
+          <p>
+            Pedidos históricos fuera del resultado por falta de fecha de entrega:
+            {{ v.resultado.entregadosSinFecha }}.
+          </p>
+        }
+      </article>
+      <article class="panel">
+        <h2>Saldos pendientes</h2>
+        <h3>Por pagar</h3>
+        <ul class="registros">
+          @for (d of v.porPagar; track d.id) {
+            <li>
+              <span
+                >#{{ d.id }} · {{ d.proveedor }}
+                <strong>{{ d.pendiente | currency: 'USD' }}</strong></span
+              >
+              <button
+                type="button"
+                class="btn btn-secondary"
+                [disabled]="guardando() || !!pendiente()"
+                (click)="pagar(d.id)"
+              >
+                Preparar pago
+              </button>
+            </li>
+          } @empty {
+            <li>Sin compras pendientes de pago.</li>
+          }
+        </ul>
+        <h3>Por cobrar</h3>
+        <ul class="registros">
+          @for (c of v.porCobrar; track c.id) {
+            <li>
+              <span>Pedido #{{ c.id }} · {{ c.cliente }}</span
+              ><strong>{{ c.pendiente | currency: 'USD' }}</strong>
+            </li>
+          } @empty {
+            <li>Sin pedidos pendientes de cobro.</li>
+          }
+        </ul>
+      </article>
+    </div>
+    <article class="panel">
+      <h2>Movimientos del período</h2>
+      <ul class="registros">
+        @for (m of v.movimientos; track m.id) {
+          <li>
+            <div>
+              <strong>{{ etiquetas[m.tipo] }} · {{ m.concepto }}</strong>
+              <small
+                >{{ m.fecha | date: 'dd/MM/yyyy HH:mm' : '-0600' }}
+                @if (m.origen) {
+                  · Desde {{ m.origen }}
+                }
+                @if (m.destino) {
+                  · Hacia {{ m.destino }}
+                }
+                @if (m.cajaId) {
+                  · Caja
+                }
+                @if (m.cantidad) {
+                  · {{ m.cantidad }} unidades · Pagado {{ m.pagadoInicial | currency: 'USD' }}
+                }
+              </small>
+            </div>
+            <strong>{{ m.monto | currency: 'USD' }}</strong>
+          </li>
+        } @empty {
+          <li>Sin movimientos en este período.</li>
+        }
+      </ul>
+      @if (v.totalMovimientos > 6) {
+        <nav class="filtro" aria-label="Paginación de movimientos">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="cargar(v.pagina - 1)"
+            [disabled]="v.pagina === 0 || cargando()"
+          >
+            Anterior
+          </button>
+          <span>Página {{ v.pagina + 1 }}</span>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            (click)="cargar(v.pagina + 1)"
+            [disabled]="(v.pagina + 1) * 6 >= v.totalMovimientos || cargando()"
+          >
+            Siguiente
+          </button>
+        </nav>
+      }
+    </article>
+  }
+  @if (cargando()) {
+    <p role="status">Consultando cuentas…</p>
+  }
+</section>

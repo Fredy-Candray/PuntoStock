@@ -81,6 +81,7 @@ export class InventarioComponent {
           DEVOLUCION_PROVEEDOR: 'Devolución al proveedor',
           MERMA: 'Merma / salida',
           AJUSTE: 'Ajuste manual',
+          CONSUMO_PEDIDO: 'Material de pedido',
           VENTA: 'Venta',
         } as Record<string, string>
       )[tipo] || tipo

@@ -1,0 +1,449 @@
+<section class="pedidos">
+  <div class="pedido-cabecera" #cabeceraPedidos>
+    <div>
+      <h1 tabindex="-1">Pedidos personalizados</h1>
+      <p>Registra encargos, abonos y materiales utilizados.</p>
+    </div>
+    <nav class="pedido-acciones" aria-label="Vistas de pedidos">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="mostrarHistorial()"
+        [attr.aria-current]="!nuevo() && !detalle() ? 'page' : null"
+        [disabled]="busy() || consultando() || !!pendiente()"
+      >
+        Historial de pedidos
+      </button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="iniciar()"
+        [attr.aria-current]="nuevo() && !editando() ? 'page' : null"
+        [disabled]="busy() || consultando() || !!pendiente()"
+      >
+        Nuevo pedido
+      </button>
+    </nav>
+  </div>
+  @if (error()) {
+    <p class="notice notice-error" role="alert">{{ error() }}</p>
+  }
+  @if (aviso()) {
+    <p role="status">{{ aviso() }}</p>
+  }
+  @if (pendiente()) {
+    <button class="btn btn-secondary" type="button" (click)="reintentar()" [disabled]="busy()">
+      {{ busy() ? 'Guardando…' : 'Reintentar operación' }}
+    </button>
+  }
+
+  @if (nuevo()) {
+    <form class="panel pedido-panel" #tarjetaPedido #alta="ngForm" (ngSubmit)="crear()">
+      @let edicion = editando();
+      <h2 tabindex="-1">{{ edicion ? 'Editar pedido #' + edicion.id : 'Nuevo pedido' }}</h2>
+      <fieldset class="pedido-form" [disabled]="busy() || !!pendiente()">
+        <label
+          >Cliente<input name="cliente" [(ngModel)]="borrador.cliente" required maxlength="160"
+        /></label>
+        <label
+          >Fecha de entrega<input
+            type="date"
+            name="entrega"
+            [(ngModel)]="borrador.entrega"
+            required
+        /></label>
+        <label class="ancho"
+          >Descripción del pedido<textarea
+            name="descripcion"
+            [(ngModel)]="borrador.descripcion"
+            required
+            maxlength="500"
+            rows="2"
+            placeholder="Por ejemplo, invitaciones de boda con sobre y listón"
+          ></textarea>
+        </label>
+        <label class="ancho"
+          >Servicios incluidos<textarea
+            name="servicios"
+            [(ngModel)]="borrador.servicios"
+            maxlength="1000"
+            rows="2"
+            placeholder="Diseño, impresión, recorte y armado"
+          ></textarea>
+        </label>
+        <label
+          >Cantidad<input
+            type="number"
+            name="cantidad"
+            [(ngModel)]="borrador.cantidad"
+            required
+            min="1"
+            max="1000000"
+            step="1"
+        /></label>
+        <label
+          >Precio por invitación (USD)<input
+            type="number"
+            name="precio"
+            [(ngModel)]="borrador.precioUnitario"
+            required
+            min="0.01"
+            max="999999999.99"
+            step="0.01"
+        /></label>
+        @if (!edicion) {
+          <label
+            >Anticipo recibido (USD)<input
+              type="number"
+              name="anticipo"
+              [(ngModel)]="anticipo"
+              required
+              min="0.01"
+              [max]="total()"
+              step="0.01"
+          /></label>
+          <label
+            >Medio de pago<select name="metodoInicial" [(ngModel)]="metodoInicial">
+              @for (m of opcionesPago; track m) {
+                <option [value]="m">{{ medios[m] }}</option>
+              }
+            </select></label
+          >
+        } @else {
+          <p class="ancho">Abonado {{ pagado(edicion) | currency: 'USD' }}</p>
+        }
+        <p class="ancho">
+          Total {{ total() | currency: 'USD' }} · Saldo
+          {{ total() - (edicion ? pagado(edicion) : (anticipo ?? 0)) | currency: 'USD' }}
+        </p>
+        @if (edicion && total() < pagado(edicion)) {
+          <p class="ancho" role="status">El total no puede ser menor que lo ya abonado.</p>
+        }
+        <div class="pedido-acciones ancho">
+          <button class="btn btn-secondary" type="button" (click)="mostrarHistorial()">
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="
+              alta.invalid ||
+              (edicion ? total() < pagado(edicion) : !importe(anticipo, total())) ||
+              total() > 999999999.99
+            "
+          >
+            {{ edicion ? 'Guardar cambios' : 'Confirmar pedido y anticipo' }}
+          </button>
+        </div>
+      </fieldset>
+    </form>
+  }
+
+  @if (detalle(); as d) {
+    <article class="panel pedido-panel pedido-detalle" #tarjetaPedido>
+      <div class="pedido-cabecera">
+        <h2 tabindex="-1">Pedido #{{ d.pedido.id }} · {{ d.pedido.cliente }}</h2>
+        <button
+          class="btn btn-secondary"
+          type="button"
+          (click)="mostrarHistorial()"
+          [disabled]="busy() || !!pendiente()"
+        >
+          Volver al historial
+        </button>
+      </div>
+      <p class="pedido-texto">{{ d.pedido.descripcion }}</p>
+      @if (d.pedido.servicios) {
+        <p class="pedido-texto"><strong>Servicios</strong> · {{ d.pedido.servicios }}</p>
+      }
+      <dl class="pedido-datos">
+        <div>
+          <dt>Entrega</dt>
+          <dd>{{ d.pedido.entrega | date: 'dd/MM/yyyy' }}</dd>
+        </div>
+        <div>
+          <dt>Estado</dt>
+          <dd>{{ estados[d.pedido.estado] }}</dd>
+        </div>
+        <div>
+          <dt>Cantidad</dt>
+          <dd>{{ d.pedido.cantidad }}</dd>
+        </div>
+        <div>
+          <dt>Total</dt>
+          <dd>{{ d.pedido.total | currency: 'USD' }}</dd>
+        </div>
+        <div>
+          <dt>Anticipo inicial</dt>
+          <dd>{{ d.abonos.at(-1)?.monto | currency: 'USD' }}</dd>
+        </div>
+        <div>
+          <dt>{{ d.pedido.estado === 'CANCELADO' ? 'Saldo al cancelar' : 'Saldo por cobrar' }}</dt>
+          <dd>{{ d.pedido.saldo | currency: 'USD' }}</dd>
+        </div>
+      </dl>
+      @if (puedeCancelar(d.pedido)) {
+        <div class="pedido-acciones">
+          @if (d.pedido.estado === 'PENDIENTE') {
+            <button
+              class="btn btn-secondary"
+              type="button"
+              (click)="cambiarEstado(d.pedido, 'LISTO')"
+              [disabled]="busy() || consultando() || !!pendiente()"
+            >
+              Marcar listo
+            </button>
+          }
+          <button
+            class="btn btn-secondary"
+            type="button"
+            (click)="cambiarEstado(d.pedido, 'ENTREGADO')"
+            [disabled]="busy() || consultando() || !!pendiente()"
+          >
+            Marcar entregado
+          </button>
+        </div>
+      }
+      <div class="pedido-secciones">
+        <section>
+          <h3>Abonos</h3>
+          @if (d.pedido.saldo > 0 && d.pedido.estado !== 'CANCELADO') {
+            <form #pago="ngForm" (ngSubmit)="abonar(d.pedido)">
+              <fieldset class="pedido-form" [disabled]="busy() || consultando() || !!pendiente()">
+                <label
+                  >Importe (USD)<input
+                    type="number"
+                    name="monto"
+                    [(ngModel)]="monto"
+                    required
+                    min="0.01"
+                    [max]="d.pedido.saldo"
+                    step="0.01"
+                /></label>
+                <label
+                  >Medio de pago<select name="medio" [(ngModel)]="medio">
+                    @for (m of opcionesPago; track m) {
+                      <option [value]="m">{{ medios[m] }}</option>
+                    }
+                  </select></label
+                >
+                <button
+                  type="submit"
+                  class="btn btn-primary ancho"
+                  [disabled]="pago.invalid || !importe(monto, d.pedido.saldo)"
+                >
+                  Registrar abono
+                </button>
+              </fieldset>
+            </form>
+          }
+          <ul class="pedido-registros">
+            @for (a of d.abonos; track a.id) {
+              <li>
+                <div>
+                  <strong>{{ a.monto | currency: 'USD' }}</strong> · {{ medios[a.metodoPago] }}
+                  <small
+                    >{{ a.fecha | date: 'dd/MM/yyyy HH:mm' : '-0600' }} · Saldo
+                    {{ a.saldo | currency: 'USD' }}</small
+                  >
+                </div>
+                <button class="btn btn-secondary" type="button" (click)="descargar(d, a)">
+                  Descargar PDF
+                </button>
+              </li>
+            }
+          </ul>
+        </section>
+        <section>
+          <h3>Materiales utilizados</h3>
+          @if (puedeCancelar(d.pedido)) {
+            @if (errorCatalogo()) {
+              <p role="alert">{{ errorCatalogo() }}</p>
+              <button class="btn btn-secondary" type="button" (click)="cargarMateriales()">
+                Volver a cargar materiales
+              </button>
+            }
+            <form #uso="ngForm" (ngSubmit)="consumir(d.pedido)">
+              <fieldset class="pedido-form" [disabled]="busy() || consultando() || !!pendiente()">
+                <label class="ancho"
+                  >Material<select name="material" [(ngModel)]="materialId" required>
+                    <option [ngValue]="null">Selecciona un producto</option>
+                    @for (m of materiales(); track m.id) {
+                      <option [ngValue]="m.id" [disabled]="m.stock === 0">
+                        {{ m.nombre }} · {{ m.stock }} {{ m.unidad }} disponibles
+                      </option>
+                    }
+                  </select></label
+                >
+                <label
+                  >Cantidad utilizada<input
+                    type="number"
+                    name="cantidadMaterial"
+                    [(ngModel)]="cantidadMaterial"
+                    min="1"
+                    max="2147483647"
+                    step="1"
+                    required
+                /></label>
+                @let costo = costoEstimado();
+                @if (costo != null) {
+                  <p class="ancho">
+                    Costo estimado del consumo <strong>{{ costo | currency: 'USD' }}</strong>
+                  </p>
+                }
+                <button type="submit" class="btn btn-primary" [disabled]="uso.invalid">
+                  Registrar consumo
+                </button>
+              </fieldset>
+            </form>
+          }
+          <ul class="pedido-registros">
+            @for (m of d.materiales; track m.id) {
+              <li>
+                <div>
+                  <strong>{{ m.nombre }}</strong> · {{ m.cantidad }} {{ m.unidad
+                  }}<small>{{ m.fecha | date: 'dd/MM/yyyy HH:mm' : '-0600' }}</small>
+                  @if (auth.admin()) {
+                    @if (m.costoTotal != null) {
+                      <small
+                        >{{ m.costoUnitario | currency: 'USD' }} por {{ m.unidad }} ·
+                        {{ m.costoTotal | currency: 'USD' }}</small
+                      >
+                    } @else {
+                      <small>Sin costo registrado</small>
+                    }
+                  }
+                </div>
+              </li>
+            } @empty {
+              <li>Aún no hay materiales registrados.</li>
+            }
+          </ul>
+          @if (d.costoMateriales != null) {
+            <p>
+              Total de materiales con costo registrado
+              <strong>{{ d.costoMateriales | currency: 'USD' }}</strong>
+            </p>
+          }
+        </section>
+      </div>
+    </article>
+  }
+
+  @if (!nuevo() && !detalle()) {
+    @if (lista(); as l) {
+      <section class="panel pedido-panel pedidos-lista">
+        <h2>Pedidos registrados</h2>
+        <ul class="pedido-registros">
+          @for (p of l.contenido; track p.id) {
+            <li>
+              <div>
+                <strong>#{{ p.id }} · {{ p.cliente }}</strong
+                ><small>{{ p.descripcion }}</small>
+                <small
+                  >{{ estados[p.estado] }} · Entrega {{ p.entrega | date: 'dd/MM/yyyy' }}
+                  @if (p.estado !== 'CANCELADO') {
+                    · Saldo {{ p.saldo | currency: 'USD' }}
+                  }
+                </small>
+              </div>
+              <div class="pedido-iconos">
+                <button
+                  class="icon-btn"
+                  type="button"
+                  aria-label="Ver pedido"
+                  title="Ver pedido"
+                  (click)="abrir(p.id)"
+                  [disabled]="consultando() || busy() || !!pendiente()"
+                >
+                  <ps-icon name="eye" />
+                </button>
+                <button
+                  class="icon-btn"
+                  type="button"
+                  aria-label="Editar pedido"
+                  title="Editar pedido"
+                  (click)="abrir(p.id, 'editar')"
+                  [disabled]="p.estado !== 'PENDIENTE' || consultando() || busy() || !!pendiente()"
+                >
+                  <ps-icon name="edit" />
+                </button>
+                <button
+                  class="icon-btn danger"
+                  type="button"
+                  aria-label="Cancelar pedido"
+                  title="Cancelar pedido"
+                  (click)="abrir(p.id, 'cancelar')"
+                  [disabled]="!puedeCancelar(p) || consultando() || busy() || !!pendiente()"
+                >
+                  <ps-icon name="cancel" />
+                </button>
+              </div>
+            </li>
+          } @empty {
+            <li>Aún no hay pedidos en esta página.</li>
+          }
+        </ul>
+        @if (l.paginas > 1) {
+          <nav class="pedidos-paginacion" aria-label="Paginación de pedidos">
+            <button
+              class="btn btn-secondary"
+              type="button"
+              (click)="cargar(l.pagina - 1)"
+              [disabled]="loading() || l.pagina === 0"
+            >
+              Anterior
+            </button>
+            <span aria-live="polite">Página {{ l.pagina + 1 }} de {{ l.paginas }}</span>
+            <button
+              class="btn btn-secondary"
+              type="button"
+              (click)="cargar(l.pagina + 1)"
+              [disabled]="loading() || l.pagina + 1 >= l.paginas"
+            >
+              Siguiente
+            </button>
+          </nav>
+        }
+      </section>
+    } @else if (!loading()) {
+      <button class="btn btn-secondary" type="button" (click)="cargar()">
+        Volver a cargar pedidos
+      </button>
+    }
+  }
+  @if (loading() || consultando()) {
+    <p role="status">Cargando pedidos…</p>
+  }
+  @if (cancelando(); as d) {
+    <dialog
+      class="panel pedido-panel pedido-cancelacion"
+      #dialogo
+      aria-labelledby="titulo-cancelacion"
+      (close)="cancelando.set(null)"
+    >
+      <h2 id="titulo-cancelacion">¿Cancelar pedido #{{ d.pedido.id }}?</h2>
+      <p>{{ d.pedido.cliente }} · {{ d.pedido.descripcion }}</p>
+      <p><strong>Abonado:</strong> {{ pagado(d.pedido) | currency: 'USD' }}</p>
+      <p><strong>Materiales utilizados:</strong></p>
+      <ul>
+        @for (m of d.materiales; track m.id) {
+          <li>{{ m.nombre }} · {{ m.cantidad }} {{ m.unidad }}</li>
+        } @empty {
+          <li>Sin consumos registrados.</li>
+        }
+      </ul>
+      <p>
+        El pedido seguirá en el historial. Esta acción no reembolsa abonos ni repone existencias.
+      </p>
+      <div class="pedido-acciones">
+        <button class="btn btn-secondary" type="button" autofocus (click)="cerrarCancelacion()">
+          Volver
+        </button>
+        <button class="btn btn-primary" type="button" (click)="confirmarCancelacion(d)">
+          Confirmar cancelación
+        </button>
+      </div>
+    </dialog>
+  }
+</section>

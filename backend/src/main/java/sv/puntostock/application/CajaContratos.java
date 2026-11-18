@@ -24,9 +24,15 @@ public final class CajaContratos {
       @NotNull @Size(max = 500) String nota,
       @NotNull UUID solicitudId,
       @NotNull @DecimalMin("0") @Digits(integer = 17, fraction = 2) BigDecimal esperado,
-      @Min(0) long ventas) {}
+      @Min(0) long ventas,
+      @Min(0) long abonos) {
+    public Cierre(
+        BigDecimal contado, String nota, UUID solicitudId, BigDecimal esperado, long ventas) {
+      this(contado, nota, solicitudId, esperado, ventas, 0);
+    }
+  }
 
-  public record Estado(boolean abierta, Long id) {}
+  public record Estado(boolean abierta, Long id, boolean pendienteDeCierre) {}
 
   public record Resumen(
       long id,
@@ -43,6 +49,7 @@ public final class CajaContratos {
       BigDecimal tarjeta,
       BigDecimal transferencia,
       long ventas,
+      long abonos,
       BigDecimal entradas,
       BigDecimal salidas,
       BigDecimal esperado) {}

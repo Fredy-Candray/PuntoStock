@@ -6,6 +6,20 @@
         <a class="btn btn-secondary" routerLink="/caja">Abrir caja</a>
       }
     </div>
+  } @else if (cajaPendienteDeCierre()) {
+    <div class="notice notice-warning" role="status">
+      <span
+        >Hay una caja de una jornada anterior pendiente de cierre.
+        @if (auth.admin()) {
+          Haz el arqueo y abre una caja nueva para volver a cobrar.
+        } @else {
+          Pide al administrador que la cierre y abra una nueva. Luego pulsa Actualizar.
+        }
+      </span>
+      @if (auth.admin()) {
+        <a class="btn btn-secondary" routerLink="/caja">Ir al arqueo</a>
+      }
+    </div>
   } @else if (errorCaja()) {
     <div class="notice notice-error" role="status">
       No se pudo comprobar la caja. Actualiza para volver a consultar antes de cobrar.

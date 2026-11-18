@@ -257,6 +257,17 @@ class SqlServerIT {
     esperadas.add("GET\t/api/productos/{id}/imagen\tsecurity-global");
     esperadas.add("POST\t/api/usuarios/{id}/restablecer-clave\thasRole('ADMIN')");
     esperadas.add("POST\t/api/auth/cambiar-clave-inicial\tsecurity-global");
+    String pedidosPermiso = "\thasAnyRole('ADMIN','VENDEDOR')";
+    esperadas.add("GET\t/api/pedidos" + pedidosPermiso);
+    esperadas.add("GET\t/api/pedidos/{id}" + pedidosPermiso);
+    esperadas.add("POST\t/api/pedidos" + pedidosPermiso);
+    esperadas.add("POST\t/api/pedidos/{id}/abonos" + pedidosPermiso);
+    esperadas.add("POST\t/api/pedidos/{id}/materiales" + pedidosPermiso);
+    esperadas.add("PUT\t/api/pedidos/{id}/estado" + pedidosPermiso);
+    esperadas.add("PUT\t/api/pedidos/{id}" + pedidosPermiso);
+    esperadas.add("GET\t/api/cuentas\thasRole('ADMIN')");
+    esperadas.add("POST\t/api/cuentas\thasRole('ADMIN')");
+    esperadas.add("POST\t/api/cuentas/movimientos\thasRole('ADMIN')");
     assertEquals(esperadas, actuales);
   }
 
@@ -684,8 +695,9 @@ class SqlServerIT {
         db.queryForObject("SELECT contenido FROM menu_configuracion WHERE id=1", String.class);
     assertTrue(menu.contains("Mi tienda"));
     assertTrue(menu.contains("/caja"));
+    assertTrue(menu.contains("/pedidos"));
     assertEquals(
-        12,
+        16,
         db.queryForObject(
             "SELECT MAX(TRY_CONVERT(int,version)) FROM flyway_schema_history WHERE success=1",
             Integer.class));
@@ -741,7 +753,7 @@ class SqlServerIT {
                 temporal,
                 "POST",
                 "/api/auth/cambiar-clave-inicial",
-                "{\"password\":\"vendedor\",\"confirmacion\":\"vendedor\"}")
+                "{\"password\":\"puntostock\",\"confirmacion\":\"puntostock\"}")
             .statusCode());
     assertEquals(
         400,
@@ -1176,13 +1188,178 @@ class SqlServerIT {
       caja.cerrar(
           c.id(),
           new sv.puntostock.application.CajaContratos.Cierre(
-              c.esperado(), "Preparar prueba", UUID.randomUUID(), c.esperado(), c.ventas()),
+              c.esperado(),
+              "Preparar prueba",
+              UUID.randomUUID(),
+              c.esperado(),
+              c.ventas(),
+              c.abonos()),
           "qa.admin");
     }
     return caja.abrir(
         new sv.puntostock.application.CajaContratos.Apertura(
             new BigDecimal(inicial), "Nueva prueba", UUID.randomUUID()),
         "qa.admin");
+  }
+
+  @Test
+  void pedidoConAnticipoConsumoYAbonosSinDuplicados() throws Exception {
+    var apertura = nuevaCaja("20.00");
+    var vendedor = login("qa.vendor");
+    long material = producto(10);
+    var mapper = new tools.jackson.databind.ObjectMapper();
+    var alta =
+        mapper.writeValueAsString(
+            Map.of(
+                "cliente",
+                "Cliente invitaciones",
+                "descripcion",
+                "Invitaciones de boda",
+                "servicios",
+                "Diseño y corte",
+                "cantidad",
+                100,
+                "precioUnitario",
+                1.25,
+                "entrega",
+                "2026-12-01",
+                "anticipo",
+                Map.of(
+                    "solicitudId", UUID.randomUUID(), "monto", 50.03, "metodoPago", "EFECTIVO")));
+    var creado = enviar(vendedor, "POST", "/api/pedidos", alta);
+    assertEquals(200, creado.statusCode(), creado.body());
+    var detalle = mapper.readTree(creado.body());
+    long id = detalle.get("pedido").get("id").asLong();
+    assertEquals(74.97, detalle.get("pedido").get("saldo").asDouble(), 0.0001);
+    assertEquals(
+        id,
+        mapper
+            .readTree(enviar(vendedor, "POST", "/api/pedidos", alta).body())
+            .get("pedido")
+            .get("id")
+            .asLong());
+    String ruta = "/api/pedidos/" + id;
+    var consumo =
+        mapper.writeValueAsString(
+            Map.of("solicitudId", UUID.randomUUID(), "productoId", material, "cantidad", 3));
+    var usado = enviar(vendedor, "POST", ruta + "/materiales", consumo);
+    assertEquals(200, usado.statusCode(), usado.body());
+    assertTrue(mapper.readTree(usado.body()).get("costoMateriales").isNull());
+    sql.update("UPDATE productos SET precio_compra=99 WHERE id=?", material);
+    var costos = mapper.readTree(get(login("qa.admin"), ruta).body());
+    assertEquals(7.50, costos.get("costoMateriales").asDouble(), 0.0001);
+    assertEquals(2.50, costos.get("materiales").get(0).get("costoUnitario").asDouble(), 0.0001);
+    assertEquals(200, enviar(vendedor, "POST", ruta + "/materiales", consumo).statusCode());
+    assertEquals(
+        7, sql.queryForObject("SELECT stock FROM productos WHERE id=?", Integer.class, material));
+    var exceso =
+        mapper.writeValueAsString(
+            Map.of("solicitudId", UUID.randomUUID(), "productoId", material, "cantidad", 8));
+    assertEquals(409, enviar(vendedor, "POST", ruta + "/materiales", exceso).statusCode());
+    assertEquals(
+        200, enviar(vendedor, "PUT", ruta + "/estado", "{\"estado\":\"ENTREGADO\"}").statusCode());
+    var abono =
+        mapper.writeValueAsString(
+            Map.of("solicitudId", UUID.randomUUID(), "monto", 74.97, "metodoPago", "TARJETA"));
+    var pago = enviar(vendedor, "POST", ruta + "/abonos", abono);
+    assertEquals(200, pago.statusCode(), pago.body());
+    assertEquals(0, mapper.readTree(pago.body()).get("pedido").get("saldo").asDouble(), 0.0001);
+    assertEquals(200, enviar(vendedor, "POST", ruta + "/abonos", abono).statusCode());
+    var adicional =
+        mapper.writeValueAsString(
+            Map.of("solicitudId", UUID.randomUUID(), "monto", 0.01, "metodoPago", "EFECTIVO"));
+    assertEquals(409, enviar(vendedor, "POST", ruta + "/abonos", adicional).statusCode());
+    var cajaPedido = caja.detalle(apertura.id(), "qa.admin");
+    assertEquals(2, cajaPedido.abonos());
+    assertEquals(0, cajaPedido.ventas());
+    assertEquals(0, new BigDecimal("70.03").compareTo(cajaPedido.esperado()));
+    assertEquals(0, new BigDecimal("74.97").compareTo(cajaPedido.tarjeta()));
+    assertEquals(2, caja.movimientos(apertura.id(), 0, "qa.admin").cantidad());
+    caja.cerrar(
+        apertura.id(),
+        new sv.puntostock.application.CajaContratos.Cierre(
+            cajaPedido.esperado(), "", UUID.randomUUID(), cajaPedido.esperado(), 0, 2),
+        "qa.admin");
+    assertEquals(200, enviar(vendedor, "POST", ruta + "/abonos", abono).statusCode());
+    var otroPedido =
+        alta.replace(
+            mapper.readTree(alta).get("anticipo").get("solicitudId").asString(),
+            UUID.randomUUID().toString());
+    assertEquals(409, enviar(vendedor, "POST", "/api/pedidos", otroPedido).statusCode());
+  }
+
+  @Test
+  void editarYCancelarPedidoConservaAbonosYMateriales() throws Exception {
+    var mapper = new tools.jackson.databind.ObjectMapper();
+    nuevaCaja("20.00");
+    long material = producto(10);
+    var vendedor = login("qa.vendor");
+    var datos =
+        new HashMap<String, Object>(
+            Map.of(
+                "cliente",
+                "Cliente",
+                "descripcion",
+                "Invitaciones",
+                "servicios",
+                "Diseño",
+                "cantidad",
+                10,
+                "precioUnitario",
+                2,
+                "entrega",
+                "2026-12-01"));
+    var alta = new HashMap<>(datos);
+    alta.put(
+        "anticipo", Map.of("solicitudId", UUID.randomUUID(), "monto", 5, "metodoPago", "EFECTIVO"));
+    var creado = enviar(vendedor, "POST", "/api/pedidos", mapper.writeValueAsString(alta));
+    assertEquals(200, creado.statusCode(), creado.body());
+    var detalle = mapper.readTree(creado.body());
+    String ruta = "/api/pedidos/" + detalle.get("pedido").get("id").asLong();
+    long abono = detalle.get("abonos").get(0).get("id").asLong();
+    datos.put("cantidad", 2);
+    assertEquals(409, enviar(vendedor, "PUT", ruta, mapper.writeValueAsString(datos)).statusCode());
+    datos.put("cantidad", 12);
+    String edicion = mapper.writeValueAsString(datos);
+    var editado = enviar(vendedor, "PUT", ruta, edicion);
+    assertEquals(200, editado.statusCode(), editado.body());
+    assertEquals(19, mapper.readTree(editado.body()).get("pedido").get("saldo").asInt());
+    String uso =
+        mapper.writeValueAsString(
+            Map.of("solicitudId", UUID.randomUUID(), "productoId", material, "cantidad", 3));
+    var usado = enviar(vendedor, "POST", ruta + "/materiales", uso);
+    assertEquals(200, usado.statusCode(), usado.body());
+    long consumo = mapper.readTree(usado.body()).get("materiales").get(0).get("id").asLong();
+    var cancelacion =
+        new HashMap<String, Object>(Map.of("estado", "CANCELADO", "ultimoAbono", abono));
+    assertEquals(
+        409,
+        enviar(vendedor, "PUT", ruta + "/estado", mapper.writeValueAsString(cancelacion))
+            .statusCode());
+    cancelacion.put("ultimoConsumo", consumo);
+    String cancelar = mapper.writeValueAsString(cancelacion);
+    var cancelado = enviar(vendedor, "PUT", ruta + "/estado", cancelar);
+    assertEquals(200, cancelado.statusCode(), cancelado.body());
+    detalle = mapper.readTree(cancelado.body());
+    assertEquals("CANCELADO", detalle.get("pedido").get("estado").asString());
+    assertEquals(1, detalle.get("abonos").size());
+    assertEquals(1, detalle.get("materiales").size());
+    assertEquals(200, enviar(vendedor, "PUT", ruta + "/estado", cancelar).statusCode());
+    assertEquals(409, enviar(vendedor, "PUT", ruta, edicion).statusCode());
+    assertEquals(
+        409,
+        enviar(
+                vendedor,
+                "POST",
+                ruta + "/materiales",
+                uso.replaceFirst("[a-f0-9-]{36}", UUID.randomUUID().toString()))
+            .statusCode());
+    var pago =
+        mapper.writeValueAsString(
+            Map.of("solicitudId", UUID.randomUUID(), "monto", 1, "metodoPago", "EFECTIVO"));
+    assertEquals(409, enviar(vendedor, "POST", ruta + "/abonos", pago).statusCode());
+    assertEquals(
+        7, sql.queryForObject("SELECT stock FROM productos WHERE id=?", Integer.class, material));
   }
 
   @Test
@@ -1384,6 +1561,163 @@ class SqlServerIT {
     } finally {
       pool.shutdownNow();
     }
+  }
+
+  @Test
+  void cuentasControlaAportesComprasYDeudasSinDuplicarInventario() throws Exception {
+    var mapper = new tools.jackson.databind.ObjectMapper();
+    var admin = login("qa.admin");
+    var vendedor = login("qa.vendor");
+    var dia = java.time.LocalDate.now(sv.puntostock.service.Tiempo.ZONA);
+    String ruta = "/api/cuentas?desde=" + dia + "&hasta=" + dia;
+    assertEquals(403, get(vendedor, ruta).statusCode());
+    String sufijo = UUID.randomUUID().toString();
+    String personal = "Efectivo personal " + sufijo;
+    String negocio = "Caja de inversión " + sufijo;
+    for (var alta :
+        List.of(
+            Map.of(
+                "nombre",
+                personal,
+                "ambito",
+                "PERSONAL",
+                "inicial",
+                100,
+                "solicitud",
+                UUID.randomUUID()),
+            Map.of(
+                "nombre",
+                negocio,
+                "ambito",
+                "NEGOCIO",
+                "inicial",
+                0,
+                "solicitud",
+                UUID.randomUUID()))) {
+      var r = enviar(admin, "POST", "/api/cuentas", mapper.writeValueAsString(alta));
+      assertEquals(200, r.statusCode(), r.body());
+    }
+    long origen = sql.queryForObject("SELECT id FROM cuentas WHERE nombre=?", Long.class, personal);
+    long destino = sql.queryForObject("SELECT id FROM cuentas WHERE nombre=?", Long.class, negocio);
+    long productoId = producto(10);
+    String movimientos = "/api/cuentas/movimientos";
+    String aporte =
+        mapper.writeValueAsString(
+            Map.of(
+                "tipo",
+                "APORTE",
+                "solicitud",
+                UUID.randomUUID(),
+                "concepto",
+                "Capital para comprar",
+                "monto",
+                80,
+                "origen",
+                origen,
+                "destino",
+                destino));
+    assertEquals(403, enviar(vendedor, "POST", movimientos, aporte).statusCode());
+    assertEquals(200, enviar(admin, "POST", movimientos, aporte).statusCode());
+    assertEquals(200, enviar(admin, "POST", movimientos, aporte).statusCode());
+    var solicitud = UUID.randomUUID();
+    String compra =
+        mapper.writeValueAsString(
+            Map.of(
+                "tipo",
+                "COMPRA",
+                "solicitud",
+                solicitud,
+                "concepto",
+                "Proveedor de prueba",
+                "monto",
+                35,
+                "origen",
+                destino,
+                "productoId",
+                productoId,
+                "cantidad",
+                10,
+                "pagadoInicial",
+                20));
+    var recibida = enviar(admin, "POST", movimientos, compra);
+    assertEquals(200, recibida.statusCode(), recibida.body());
+    assertEquals(200, enviar(admin, "POST", movimientos, compra).statusCode());
+    long compraId =
+        sql.queryForObject(
+            "SELECT id FROM cuenta_movimientos WHERE solicitud=?",
+            Long.class,
+            solicitud.toString());
+    String pago =
+        mapper.writeValueAsString(
+            Map.of(
+                "tipo",
+                "PAGO_COMPRA",
+                "solicitud",
+                UUID.randomUUID(),
+                "concepto",
+                "Pago de saldo",
+                "monto",
+                15,
+                "origen",
+                destino,
+                "compraId",
+                compraId));
+    var pagado = enviar(admin, "POST", movimientos, pago);
+    assertEquals(200, pagado.statusCode(), pagado.body());
+    assertEquals(
+        20,
+        sql.queryForObject("SELECT stock FROM productos WHERE id=?", Integer.class, productoId));
+    assertEquals(
+        0,
+        new BigDecimal("3.00")
+            .compareTo(
+                sql.queryForObject(
+                    "SELECT precio_compra FROM productos WHERE id=?",
+                    BigDecimal.class,
+                    productoId)));
+    var vista = get(admin, ruta);
+    assertEquals(200, vista.statusCode(), vista.body());
+    var datos = mapper.readTree(vista.body());
+    for (var cuenta : datos.get("cuentas")) {
+      if (cuenta.get("id").asLong() == origen) assertEquals(20, cuenta.get("saldo").asInt());
+      if (cuenta.get("id").asLong() == destino) assertEquals(45, cuenta.get("saldo").asInt());
+    }
+    for (var deuda : datos.get("porPagar")) assertNotEquals(compraId, deuda.get("id").asLong());
+  }
+
+  @Test
+  void cajaDeOtraJornadaBloqueaCobrosPeroPermiteArqueo() throws Exception {
+    var c = nuevaCaja("5.00");
+    var vendedor = login("qa.vendor");
+    var mapper = new tools.jackson.databind.ObjectMapper();
+    var estado = mapper.readTree(get(vendedor, "/api/caja/estado").body());
+    assertFalse(estado.get("pendienteDeCierre").asBoolean());
+    sql.update("UPDATE cajas SET apertura=DATEADD(day, -1, apertura) WHERE id=?", c.id());
+    estado = mapper.readTree(get(vendedor, "/api/caja/estado").body());
+    assertTrue(estado.get("abierta").asBoolean());
+    assertTrue(estado.get("pendienteDeCierre").asBoolean());
+    var venta =
+        new VentaInput(
+            List.of(new Linea(producto(10), 1)),
+            "EFECTIVO",
+            new BigDecimal("10.00"),
+            new BigDecimal("4.00"),
+            "",
+            "",
+            UUID.randomUUID());
+    var rechazo =
+        assertThrows(
+            org.springframework.web.server.ResponseStatusException.class,
+            () -> operaciones.vender(venta, "qa.vendor"));
+    assertEquals(409, rechazo.getStatusCode().value());
+    assertTrue(rechazo.getReason().contains("pendiente de cierre"));
+    caja.cerrar(
+        c.id(),
+        new sv.puntostock.application.CajaContratos.Cierre(
+            c.esperado(), "", UUID.randomUUID(), c.esperado(), c.ventas()),
+        "qa.admin");
+    nuevaCaja("5.00");
+    operaciones.vender(venta, "qa.vendor");
   }
 
   @Test

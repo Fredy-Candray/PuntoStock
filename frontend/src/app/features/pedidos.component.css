@@ -1,0 +1,141 @@
+.pedidos {
+  display: grid;
+  gap: 1rem;
+}
+.pedido-cabecera,
+.pedido-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.pedido-cabecera {
+  justify-content: space-between;
+}
+.pedido-cabecera h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pedido-panel .btn {
+  max-width: 100%;
+  white-space: normal;
+}
+.pedido-panel {
+  padding: clamp(0.9rem, 3vw, 1.5rem);
+  min-width: 0;
+}
+.pedido-form,
+.pedido-secciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 0.85rem;
+}
+.pedido-form {
+  border: 0;
+  padding: 0;
+  margin: 0.8rem 0;
+  min-width: 0;
+  align-items: end;
+}
+.pedido-form label {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.pedido-form select {
+  min-width: 0;
+  width: 100%;
+}
+.pedido-form .ancho {
+  grid-column: 1 / -1;
+}
+.pedido-datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+}
+.pedido-datos dd {
+  margin: 0.25rem 0;
+  font-weight: 650;
+}
+.pedido-secciones {
+  margin-top: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+}
+.pedido-registros {
+  list-style: none;
+  padding: 0;
+  margin: 0.65rem 0;
+}
+.pedido-registros li {
+  border-top: 1px solid var(--border, #88999555);
+  padding: 0.75rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.pedido-registros li div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pedido-registros small {
+  display: block;
+  margin-top: 0.25rem;
+}
+.pedido-texto {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.pedidos-paginacion {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+.pedidos-paginacion span {
+  text-align: center;
+  font-size: 0.875rem;
+}
+@media (max-width: 1200px), (max-height: 760px) {
+  .pedidos-lista .pedido-registros li {
+    padding-block: 0.5rem;
+  }
+  .pedidos-lista .btn {
+    padding: 0.4rem 0.65rem;
+    min-height: 36px;
+  }
+}
+@media (max-width: 480px) {
+  .pedidos-paginacion {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pedidos-paginacion span {
+    grid-area: 1 / 1 / 2 / -1;
+  }
+}
+
+.pedido-iconos {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.25rem;
+}
+
+.pedido-iconos .icon-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.pedido-cancelacion {
+  width: min(32rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  margin: auto;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  color: inherit;
+}
+
+.pedido-cancelacion::backdrop {
+  background: rgb(0 0 0 / 55%);
+}

@@ -655,8 +655,7 @@ small {
   height: 19px;
 }
 .sidebar-bottom {
-  margin-top: auto;
-  padding-top: 30px;
+  flex-shrink: 0;
 }
 .sidebar-tip {
   display: flex;
@@ -1920,7 +1919,6 @@ tbody tr:hover {
   display: flex;
   justify-content: center;
   border-top: 1px solid #ffffff16;
-  margin-top: 20px;
   padding-top: 18px;
 }
 .login-theme-toggle {
@@ -3547,6 +3545,9 @@ ps-user-menu.mobile-user-menu {
   position: sticky;
   top: 0;
   z-index: 30;
+}
+.workspace:has(.pedido-detalle) {
+  overflow-anchor: none;
 }
 @media (min-width: 1001px) {
   .pos-screen .cart-panel {

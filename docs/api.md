@@ -47,14 +47,37 @@ Errores: `{code,message,campos,requestId}`. 400 entrada inválida, 401 acceso in
 
 | Método y ruta | Permiso | Entrada / resultado |
 |---|---|---|
-| GET /api/caja/estado | Autenticado | abierta e id, sin saldos |
+| GET /api/caja/estado | Autenticado | abierta, id y pendienteDeCierre, sin saldos |
 | GET /api/caja?pagina=0 | ADMIN | Página de 20 resúmenes, más reciente primero |
 | GET /api/caja/{id} | ADMIN | Resumen, totales por medio de pago y cierre |
-| GET /api/caja/{id}/movimientos?pagina=0 | ADMIN | Página de 20 ventas y movimientos manuales |
+| GET /api/caja/{id}/movimientos?pagina=0 | ADMIN | Página de 20 registros de ventas, abonos y movimientos manuales |
 | POST /api/caja/abrir | ADMIN | inicial, nota, solicitudId (UUID obligatorio) |
 | POST /api/caja/{id}/movimientos | ADMIN | tipo ENTRADA/SALIDA, monto positivo, motivo, solicitudId |
-| POST /api/caja/{id}/cerrar | ADMIN | contado, nota, solicitudId, esperado y ventas del resumen consultado |
+| POST /api/caja/{id}/cerrar | ADMIN | contado, nota, solicitudId, esperado, ventas y abonos del resumen consultado |
 
-Esperado = inicial + ventas en efectivo + entradas − salidas. No incluye tarjeta ni transferencia. Nota es texto de hasta 500 caracteres (puede ser vacío en apertura/cierre cuadrado); motivo y nota de cierre con diferencia no pueden estar en blanco. Importes de entrada de caja: como máximo 9 enteros y 2 decimales, no negativos, movimiento al menos 0.01. UUID obligatorio para proteger reintentos. Un cierre con saldo o número de ventas desactualizados devuelve 409. Las nuevas ventas POST /api/ventas requieren una caja abierta; el cuerpo y el comprobante permanecen compatibles. Ventas previas con caja nula conservan su historial.
+Esperado = inicial + ventas y abonos en efectivo + entradas − salidas. Los cobros con tarjeta y transferencia se muestran por separado. Las notas admiten hasta 500 caracteres. El motivo de un movimiento y la nota de un cierre con diferencia son obligatorios. Los importes de entrada de caja admiten 9 enteros y 2 decimales. Cada movimiento requiere al menos 0.01 y un UUID para proteger reintentos. Un cierre con saldo, número de ventas o número de abonos desactualizados devuelve 409. Las nuevas ventas POST /api/ventas requieren una caja abierta. Las ventas previas con caja nula conservan su historial.
 
 Ver reglas operativas y límites en [Caja](caja.md).
+
+## Pedidos personalizados
+
+El módulo está disponible para administradores y vendedores. Las operaciones usan la migración V13.
+
+- `GET /api/pedidos?pagina=0` devuelve seis pedidos por página. `GET /api/pedidos/{id}` devuelve el pedido, sus abonos y los materiales consumidos.
+- `POST /api/pedidos` recibe cliente, descripción, servicios, cantidad, precio unitario, fecha de entrega y un anticipo con monto, medio de pago y UUID de solicitud. El servidor calcula el total y registra el pedido y el anticipo juntos con una caja abierta.
+- `POST /api/pedidos/{id}/abonos` recibe monto, medio de pago y UUID de solicitud. Admite cobros hasta el saldo pendiente. El recibo conserva el saldo al momento del abono.
+- `POST /api/pedidos/{id}/materiales` recibe producto, cantidad en la unidad de inventario y UUID de solicitud. Registra una salida por consumo en el historial de inventario.
+- `PUT /api/pedidos/{id}` edita los datos del pedido pendiente, sin modificar los abonos ni materiales. El total debe cubrir lo ya abonado.
+- `PUT /api/pedidos/{id}/estado` permite marcar el pedido como listo o entregado. El saldo puede seguir pendiente después de la entrega. Para cancelar un pedido pendiente o listo, envía `estado: CANCELADO`, `ultimoAbono` y `ultimoConsumo` con los identificadores más recientes mostrados en la confirmación (o `null` si no hay registros). La cancelación conserva el historial y bloquea nuevos abonos y consumos.
+
+Caja incluye los abonos por medio de pago y muestra el número de abonos por separado. El cierre compara ese número junto con el efectivo esperado y el número de ventas. Los pedidos y abonos se consultan en Pedidos.
+
+### Cuentas
+
+- `GET /api/cuentas?desde=AAAA-MM-DD&hasta=AAAA-MM-DD&pagina=0` devuelve los saldos actuales, las deudas y cobros pendientes, y los movimientos y el resultado estimado del período.
+- `POST /api/cuentas` crea una cuenta personal o del negocio con saldo inicial. `POST /api/cuentas/movimientos` registra aportes, retiros, traspasos, entradas, gastos, compras y pagos a proveedores. Ambas operaciones admiten reintento con el mismo UUID y los mismos datos.
+- Solo el rol administrador puede consultar o modificar cuentas. El arqueo sigue en Caja. Los traspasos entre Caja y una cuenta del negocio registran el cambio en ambos historiales dentro de la misma transacción. El saldo fuera de Caja requiere registrar los depósitos y liquidaciones efectivamente recibidos.
+- Una compra registra un producto, unidades recibidas, importe y pago inicial. Incorpora las unidades y actualiza el costo promedio. Los pagos posteriores se aplican al saldo sin modificar inventario.
+- El resultado estima el margen de mostrador más pedidos entregados y otros ingresos del negocio, menos costos de pedidos y gastos del negocio. Los entregados históricos sin fecha real se indican aparte. Saldos por cobrar y pagar corresponden a la fecha de consulta.
+
+Desde V14, cada consumo guarda el precio de compra unitario vigente al registrarlo. El detalle muestra el costo unitario, el subtotal por consumo y el costo acumulado de materiales a administradores. Los consumos anteriores sin costo registrado se excluyen del total.

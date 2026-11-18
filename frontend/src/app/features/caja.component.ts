@@ -155,6 +155,7 @@ export class CajaComponent {
         solicitudId: crypto.randomUUID(),
         esperado: c.esperado,
         ventas: c.ventas,
+        abonos: c.abonos,
       },
     });
   }

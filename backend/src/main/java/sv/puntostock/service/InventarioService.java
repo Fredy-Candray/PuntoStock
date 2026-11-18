@@ -2,6 +2,8 @@ package sv.puntostock.service;
 
 import static org.springframework.http.HttpStatus.*;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.*;
 import java.util.*;
 import org.springframework.stereotype.Service;
@@ -47,16 +49,33 @@ public class InventarioService {
   @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
   public void registrar(
       Producto p, Usuario u, String tipo, int cantidad, String motivo, Venta venta) {
+    Movimiento m = new Movimiento();
+    m.venta = venta;
+    registrarMovimiento(m, p, u, tipo, cantidad, motivo);
+  }
+
+  @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+  public void consumirPedido(Producto p, Usuario u, int cantidad, long pedido, UUID solicitud) {
+    Movimiento m = new Movimiento();
+    m.pedidoId = pedido;
+    m.solicitudConsumo = solicitud;
+    m.nombreInsumo = p.nombre;
+    m.unidadInsumo = p.unidad;
+    m.costoUnitarioInsumo = p.precioCompra;
+    registrarMovimiento(m, p, u, "CONSUMO_PEDIDO", -cantidad, "Pedido #" + pedido);
+    movimientos.flush();
+  }
+
+  private void registrarMovimiento(
+      Movimiento m, Producto p, Usuario u, String tipo, int cantidad, String motivo) {
     long nuevo = (long) p.stock + cantidad;
     if (nuevo < 0 || nuevo > Integer.MAX_VALUE)
       throw new ResponseStatusException(CONFLICT, "Stock insuficiente o fuera de rango: " + p.sku);
-    Movimiento m = new Movimiento();
     m.producto = p;
     m.usuario = u;
     m.tipo = tipo;
     m.cantidad = cantidad;
     m.motivo = motivo;
-    m.venta = venta;
     m.fecha = LocalDateTime.now(clock);
     m.stockAnterior = p.stock;
     m.stockPosterior = (int) nuevo;
@@ -94,5 +113,26 @@ public class InventarioService {
     if (motivo.length() > 500)
       throw new ResponseStatusException(BAD_REQUEST, "Acorta el motivo del movimiento.");
     registrar(p, u, in.tipo(), (int) cantidad, motivo, null);
+  }
+
+  @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+  public void recibirCompra(
+      long id, int cantidad, BigDecimal total, String motivo, String username) {
+    var usuario = actor(username);
+    var producto = bloquear(id);
+    if (!producto.tipo.equals("PRODUCTO"))
+      throw new ResponseStatusException(BAD_REQUEST, "Selecciona un artículo con existencias.");
+    var valorExistente = producto.precioCompra.multiply(BigDecimal.valueOf(producto.stock));
+    registrar(producto, usuario, "COMPRA", cantidad, motivo, null);
+    producto.precioCompra =
+        valorExistente
+            .add(total)
+            .divide(BigDecimal.valueOf(producto.stock), 2, RoundingMode.HALF_UP);
+    if (producto.unidadesPorCaja != null)
+      producto.precioCompraCaja =
+          valorExistente
+              .add(total)
+              .multiply(BigDecimal.valueOf(producto.unidadesPorCaja))
+              .divide(BigDecimal.valueOf(producto.stock), 2, RoundingMode.HALF_UP);
   }
 }

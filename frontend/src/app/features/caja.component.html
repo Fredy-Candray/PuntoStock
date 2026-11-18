@@ -97,7 +97,7 @@
           <span>Fondo inicial</span><strong>{{ c.inicial | currency: 'USD' }}</strong>
         </div>
         <div>
-          <span>Ventas en efectivo</span><strong>{{ c.efectivo | currency: 'USD' }}</strong>
+          <span>Cobros en efectivo</span><strong>{{ c.efectivo | currency: 'USD' }}</strong>
         </div>
         <div>
           <span>Entradas manuales</span><strong>{{ c.entradas | currency: 'USD' }}</strong>
@@ -110,15 +110,15 @@
         </div>
       </div>
       <p class="field-help">
-        Fondo inicial + ventas en efectivo + entradas − salidas. Se suma el total de la venta,
-        descontando el cambio entregado al cliente.
+        Fondo inicial + cobros en efectivo + entradas − salidas. Se suma lo cobrado en ventas y
+        abonos, descontando el cambio entregado al cliente.
       </p>
       <div class="caja-no-efectivo">
         <span
           >Tarjeta: <strong>{{ c.tarjeta | currency: 'USD' }}</strong></span
         ><span
           >Transferencia: <strong>{{ c.transferencia | currency: 'USD' }}</strong></span
-        ><span>{{ c.ventas }} ventas</span>
+        ><span>{{ c.ventas }} ventas · {{ c.abonos }} abonos</span>
       </div>
       <p class="field-help">
         Tarjeta y transferencia no forman parte del efectivo que debes contar.
@@ -292,7 +292,13 @@
               <td data-label="Fecha">{{ m.fecha | date: 'dd/MM/yy HH:mm' : '-0600' }}</td>
               <td data-label="Detalle">
                 <strong>{{
-                  m.tipo === 'VENTA' ? 'Venta' : m.tipo === 'ENTRADA' ? 'Entrada' : 'Salida'
+                  m.tipo === 'ABONO'
+                    ? 'Abono'
+                    : m.tipo === 'VENTA'
+                      ? 'Venta'
+                      : m.tipo === 'ENTRADA'
+                        ? 'Entrada'
+                        : 'Salida'
                 }}</strong>
                 <div class="caja-nota">{{ m.motivo }}</div>
               </td>

@@ -32,6 +32,7 @@ export class PosComponent {
   readonly api = inject(ApiService);
   readonly cajaApi = inject(CajaService);
   cajaAbierta = signal<boolean | null>(null);
+  cajaPendienteDeCierre = signal(false);
   errorCaja = signal(false);
   readonly auth = inject(AuthService);
   readonly buscador = viewChild<ElementRef<HTMLInputElement>>('buscador');
@@ -97,9 +98,13 @@ export class PosComponent {
   }
   cargar() {
     this.cajaAbierta.set(null);
+    this.cajaPendienteDeCierre.set(false);
     this.errorCaja.set(false);
     this.cajaApi.estado().subscribe({
-      next: (c) => this.cajaAbierta.set(c.abierta),
+      next: (c) => {
+        this.cajaAbierta.set(c.abierta);
+        this.cajaPendienteDeCierre.set(c.pendienteDeCierre === true);
+      },
       error: () => this.errorCaja.set(true),
     });
     this.loading.set(true);
@@ -348,6 +353,7 @@ export class PosComponent {
     return (
       !!this.pendiente() ||
       (this.cajaAbierta() === true &&
+        !this.cajaPendienteDeCierre() &&
         !!this.carrito().length &&
         this.carrito().every((l) => l.disponible && this.lineaValida(l)) &&
         (this.metodo !== 'EFECTIVO' ||

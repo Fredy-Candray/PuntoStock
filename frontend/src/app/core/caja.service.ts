@@ -5,6 +5,7 @@ import type { Pagina } from './api.service';
 export interface EstadoCaja {
   abierta: boolean;
   id: number | null;
+  pendienteDeCierre: boolean;
 }
 export interface ResumenCaja {
   id: number;
@@ -21,6 +22,7 @@ export interface ResumenCaja {
   tarjeta: number;
   transferencia: number;
   ventas: number;
+  abonos: number;
   entradas: number;
   salidas: number;
   esperado: number;
@@ -50,6 +52,7 @@ export type OperacionCaja =
         solicitudId: string;
         esperado: number;
         ventas: number;
+        abonos: number;
       };
     };
 @Injectable({ providedIn: 'root' })

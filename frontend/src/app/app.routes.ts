@@ -33,6 +33,16 @@ export const routes: Routes = [
     loadComponent: () => import('./features/caja.component').then((m) => m.CajaComponent),
   },
   {
+    path: 'cuentas',
+    canActivate: [authGuard, adminGuard, menuGuard],
+    loadComponent: () => import('./features/cuentas.component').then((m) => m.CuentasComponent),
+  },
+  {
+    path: 'pedidos',
+    canActivate: [authGuard, menuGuard],
+    loadComponent: () => import('./features/pedidos.component').then((m) => m.PedidosComponent),
+  },
+  {
     path: 'ventas',
     canActivate: [authGuard, menuGuard],
     loadComponent: () => import('./features/ventas.component').then((m) => m.VentasComponent),

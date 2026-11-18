@@ -42,32 +42,49 @@ public class CajaService {
     return u.id;
   }
 
-  private void bloquear() {
+  @Transactional(propagation = Propagation.MANDATORY)
+  public void bloquear() {
     // Esta fila existe incluso con caja cerrada: serializa apertura, venta, movimiento y cierre.
     sql.queryForObject(
         "SELECT id FROM caja_control WITH (UPDLOCK,HOLDLOCK) WHERE id=1", Integer.class);
   }
 
-  private Long abierta() {
-    return sql.query("SELECT id FROM cajas WHERE cierre IS NULL", (r, n) -> r.getLong(1)).stream()
+  private record CajaAbierta(long id, LocalDateTime apertura) {}
+
+  private CajaAbierta abierta() {
+    return sql
+        .query(
+            "SELECT id, apertura FROM cajas WHERE cierre IS NULL",
+            (r, n) ->
+                new CajaAbierta(r.getLong("id"), r.getObject("apertura", LocalDateTime.class)))
+        .stream()
         .findFirst()
         .orElse(null);
   }
 
+  private boolean pendienteDeCierre(CajaAbierta caja) {
+    return caja.apertura().isBefore(Tiempo.inicio(LocalDate.now(clock.withZone(Tiempo.ZONA))));
+  }
+
   @Transactional(readOnly = true)
   public Estado estado() {
-    var id = abierta();
-    return new Estado(id != null, id);
+    var caja = abierta();
+    return caja == null
+        ? new Estado(false, null, false)
+        : new Estado(true, caja.id(), pendienteDeCierre(caja));
   }
 
   @Transactional(propagation = Propagation.MANDATORY)
   public long paraVenta() {
     bloquear();
-    var id = abierta();
-    if (id == null)
+    var caja = abierta();
+    if (caja == null)
       throw conflicto(
           "La caja está cerrada. Solicita al administrador que la abra antes de vender.");
-    return id;
+    if (pendienteDeCierre(caja))
+      throw conflicto(
+          "Hay una caja de una jornada anterior pendiente de cierre. El administrador debe cerrarla y abrir una nueva para continuar con los cobros.");
+    return caja.id();
   }
 
   private LocalDateTime ahora() {
@@ -154,11 +171,11 @@ public class CajaService {
                   in.contado(),
                   in.nota().trim(),
                   id));
-      if (!mismo || caja.esperado().compareTo(in.esperado()) != 0 || caja.ventas() != in.ventas())
+      if (!mismo || cambioResumen(caja, in))
         throw conflicto("La caja ya se cerró. Consulta el cierre registrado.");
       return caja;
     }
-    if (caja.esperado().compareTo(in.esperado()) != 0 || caja.ventas() != in.ventas())
+    if (cambioResumen(caja, in))
       throw conflicto(
           "La caja recibió operaciones nuevas. Actualiza el resumen y revisa el conteo antes de cerrar.");
     if (caja.esperado().precision() - caja.esperado().scale() > 17)
@@ -181,17 +198,30 @@ public class CajaService {
   }
 
   // Una sola consulta evita combinar saldos de instantes distintos.
+  private boolean cambioResumen(Resumen caja, Cierre in) {
+    return caja.esperado().compareTo(in.esperado()) != 0
+        || caja.ventas() != in.ventas()
+        || caja.abonos() != in.abonos();
+  }
+
   private static final String RESUMEN =
       """
     SELECT c.*,a.username AS abierto_nombre,z.username AS cerrado_nombre,
       COALESCE(v.efectivo,0) AS efectivo,COALESCE(v.tarjeta,0) AS tarjeta,
       COALESCE(v.transferencia,0) AS transferencia,COALESCE(v.cantidad,0) AS cantidad,
+      COALESCE(v.abonos,0) AS abonos,
       COALESCE(m.entradas,0) AS entradas,COALESCE(m.salidas,0) AS salidas
     FROM cajas c JOIN usuarios a ON a.id=c.abierto_por LEFT JOIN usuarios z ON z.id=c.cerrado_por
     OUTER APPLY (SELECT SUM(CASE WHEN metodo_pago='EFECTIVO' THEN total ELSE 0 END) efectivo,
       SUM(CASE WHEN metodo_pago='TARJETA' THEN total ELSE 0 END) tarjeta,
       SUM(CASE WHEN metodo_pago='TRANSFERENCIA' THEN total ELSE 0 END) transferencia,
-      COUNT_BIG(*) cantidad FROM ventas WHERE caja_id=c.id) v
+      COUNT_BIG(CASE WHEN clase='VENTA' THEN 1 END) cantidad,
+      COUNT_BIG(CASE WHEN clase='ABONO' THEN 1 END) abonos
+      FROM (
+        SELECT total,metodo_pago,'VENTA' clase FROM ventas WHERE caja_id=c.id
+        UNION ALL
+        SELECT monto,metodo_pago,'ABONO' FROM pedido_abonos WHERE caja_id=c.id
+      ) cobros) v
     OUTER APPLY (SELECT SUM(CASE WHEN tipo='ENTRADA' THEN monto ELSE 0 END) entradas,
       SUM(CASE WHEN tipo='SALIDA' THEN monto ELSE 0 END) salidas FROM caja_movimientos WHERE caja_id=c.id) m
     """;
@@ -222,6 +252,7 @@ public class CajaService {
         r.getBigDecimal("tarjeta"),
         r.getBigDecimal("transferencia"),
         r.getLong("cantidad"),
+        r.getLong("abonos"),
         entradas,
         salidas,
         cierre == null
@@ -267,8 +298,12 @@ public class CajaService {
       UNION ALL
       SELECT CONCAT('v-',v.id),v.fecha,u.username,'VENTA',CONCAT('Venta #',v.id),v.total,v.metodo_pago
       FROM ventas v JOIN usuarios u ON u.id=v.usuario_id WHERE v.caja_id=?
+      UNION ALL
+      SELECT CONCAT('a-',a.id),a.fecha,u.username,'ABONO',CONCAT('Pedido #',a.pedido_id),a.monto,a.metodo_pago
+      FROM pedido_abonos a JOIN usuarios u ON u.id=a.usuario_id WHERE a.caja_id=?
       """;
-    long n = sql.queryForObject("SELECT COUNT_BIG(*) FROM (" + union + ") x", Long.class, id, id);
+    long n =
+        sql.queryForObject("SELECT COUNT_BIG(*) FROM (" + union + ") x", Long.class, id, id, id);
     var lista =
         sql.query(
             "SELECT * FROM ("
@@ -283,6 +318,7 @@ public class CajaService {
                     r.getString("motivo"),
                     r.getBigDecimal("monto"),
                     r.getString("metodo_pago")),
+            id,
             id,
             id,
             (long) pagina * 20);
